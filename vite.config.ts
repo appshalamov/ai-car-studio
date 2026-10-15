@@ -1,9 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { resolve } from 'node:path'
 
 export default defineConfig({
   base: './',
+  build: {
+    rollupOptions: { input: { main: resolve(__dirname, 'index.html'), admin: resolve(__dirname, 'admin.html') } },
+  },
   plugins: [
     react(),
     VitePWA({
@@ -28,9 +32,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,webmanifest}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
         navigateFallback: 'index.html',
+        navigateFallbackDenylist: [/admin/],
+        importScripts: ['push-sw.js'],
       },
     }),
   ],

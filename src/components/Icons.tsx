@@ -1,0 +1,18 @@
+import type { ReactNode } from 'react'
+
+const I = ({ children, className = 'i' }: { children: ReactNode; className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" aria-hidden="true">{children}</svg>
+)
+
+export const IconGear = () => <I><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></I>
+export const IconLock = () => <I><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></I>
+export const IconCamera = () => <I><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></I>
+export const IconCar = () => <I><path d="M3 15h18M5 15l2-5h10l2 5M7 18a1.5 1.5 0 1 0 0-.01M17 18a1.5 1.5 0 1 0 0-.01" /></I>
+export const IconSun = () => <I><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M5 19l1.4-1.4M17.6 6.4 19 5" /></I>
+export const IconAngle = () => <I><path d="M4 18 20 6M4 6h6M14 18h6" /></I>
+export const IconHome = () => <I><path d="M4 10.5 12 4l8 6.5V20h-5v-6H9v6H4z" /></I>
+export const IconTune = () => <I><path d="M4 7h10M18 7h2M4 17h4M12 17h8" /><circle cx="16" cy="7" r="2" /><circle cx="10" cy="17" r="2" /></I>
+export const IconGallery = () => <I><rect x="4" y="4" width="7" height="9" rx="1.5" /><rect x="13" y="4" width="7" height="6" rx="1.5" /><rect x="4" y="15" width="7" height="5" rx="1.5" /><rect x="13" y="12" width="7" height="8" rx="1.5" /></I>
+export const IconPhone = () => <I><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z" /></I>
+export const IconDownload = () => <I><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></I>
+export const IconArrows = () => <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5 2 10l5 5M13 5l5 5-5 5" /></svg>

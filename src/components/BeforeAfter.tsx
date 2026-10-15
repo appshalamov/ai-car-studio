@@ -1,27 +1,41 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { IconArrows } from './Icons'
 
-export function BeforeAfter({ before, after, labels = ['До', 'После'] }: { before: string; after: string; labels?: [string, string] }) {
-  const [pos, setPos] = useState(50)
+/** Drag the seam to compare. With `hint`, the seam slides once on its own to show it can be moved. */
+export function BeforeAfter({ before, after, labels, hint = false, className = '' }: { before: string; after: string; labels?: [string, string]; hint?: boolean; className?: string }) {
   const box = useRef<HTMLDivElement>(null)
-  const move = (clientX: number) => {
+  const drag = useRef(false)
+  const [cut, setCut] = useState(50)
+  const [hinting, setHinting] = useState(hint)
+
+  useEffect(() => {
+    if (!hint) return
+    const t1 = setTimeout(() => setCut(22), 900)
+    const t2 = setTimeout(() => setCut(56), 1900)
+    const t3 = setTimeout(() => setHinting(false), 2900)
+    return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3) }
+  }, [hint])
+
+  const set = (x: number) => {
     const r = box.current?.getBoundingClientRect()
-    if (!r) return
-    setPos(Math.max(0, Math.min(100, ((clientX - r.left) / r.width) * 100)))
+    if (r) setCut(Math.max(0, Math.min(100, ((x - r.left) / r.width) * 100)))
   }
+
   return (
     <div
-      className="ba"
       ref={box}
-      onPointerDown={(e) => { (e.target as HTMLElement).setPointerCapture?.(e.pointerId); move(e.clientX) }}
-      onPointerMove={(e) => { if (e.buttons) move(e.clientX) }}
+      className={`ba ${hinting ? 'hint' : ''} ${className}`}
+      style={{ '--cut': `${cut}%` } as CSSProperties}
+      onPointerDown={(e) => { drag.current = true; setHinting(false); e.currentTarget.setPointerCapture(e.pointerId); set(e.clientX) }}
+      onPointerMove={(e) => { if (drag.current) set(e.clientX) }}
+      onPointerUp={() => { drag.current = false }}
+      onPointerCancel={() => { drag.current = false }}
     >
-      <img src={after} alt="" draggable={false} />
-      <div className="ba-before" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-        <img src={before} alt="" draggable={false} />
-      </div>
-      <div className="ba-handle" style={{ left: `${pos}%` }}><span>⇆</span></div>
-      <span className="ba-tag left">{labels[0]}</span>
-      <span className="ba-tag right">{labels[1]}</span>
+      <img src={before} alt="" draggable={false} />
+      <img className="after" src={after} alt="" draggable={false} />
+      {labels && <><span className="tag l">{labels[0]}</span><span className="tag r">{labels[1]}</span></>}
+      <div className="seam" />
+      <div className="knob"><IconArrows /></div>
     </div>
   )
 }

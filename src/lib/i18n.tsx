@@ -11,7 +11,7 @@ function initialLang(): Lang {
     const saved = localStorage.getItem('acs.lang')
     if (saved === 'ru' || saved === 'en') return saved
   } catch { /* ignore */ }
-  return navigator.language?.startsWith('ru') ? 'ru' : 'en'
+  return 'ru'
 }
 
 export function LangProvider({ children }: { children: ReactNode }) {
