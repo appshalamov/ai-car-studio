@@ -5,17 +5,22 @@ compatibility_date = "2026-09-01"
 [vars]
 WOSO_MODEL = "nano-banana"
 USD_PER_CREDIT = "0.15"
-DAILY_LIMIT = "20"
+FREE_GENERATIONS = "3"
 TOTAL_DAILY_LIMIT = "30"
 ALLOWED_ORIGIN = "https://appshalamov.github.io"
+ADMIN_URL = "https://appshalamov.github.io/ai-car-studio/admin.html"
 
 [[r2_buckets]]
 binding = "IMAGES"
 bucket_name = "ai-car-studio-refs"
 
-# Create once: `npx wrangler r2 bucket create ai-car-studio-refs`
-# Token: `npx wrangler secret put WOSO_TOKEN` (never commit it).
-# Per-client daily limit: `npx wrangler kv namespace create LIMITS`, then add:
+# Create once and paste the id:  npx wrangler kv namespace create DB
 # [[kv_namespaces]]
-# binding = "LIMITS"
-# id = "<id from the command above>"
+# binding = "DB"
+# id = "<id>"
+
+# Secrets (never commit):
+#   npx wrangler secret put WOSO_TOKEN       (ara_pat_… from the woso MCP link)
+#   npx wrangler secret put ADMIN_PASSWORD
+#   npx wrangler secret put VAPID_PUBLIC     (npx web-push generate-vapid-keys)
+#   npx wrangler secret put VAPID_PRIVATE
