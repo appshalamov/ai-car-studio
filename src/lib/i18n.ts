@@ -1,6 +1,7 @@
 import { createContext, useContext } from 'react'
 
-export type Lang = 'en' | 'ru'
+export type Lang = 'en' | 'ru' | 'es'
+export const LANGS: [Lang, string][] = [['en', 'English'], ['ru', 'Русский'], ['es', 'Español']]
 
 const plural = (n: number, one: string, few: string, many: string) => {
   const m = n % 10
@@ -18,7 +19,7 @@ export const T = {
     s1: 'Take a photo', s1p: 'Whole car in frame, side or three-quarter view, daylight works best.',
     s2: 'Pick a color and wheels', s2p: 'Start from a ready look, or choose paint, finish, wheels, stance and tint yourself.',
     s3: 'Compare and keep it', s3p: 'Drag across the photo to compare. Every build stays in your gallery and in the app.',
-    startT: 'Popular styles',
+    startT: 'Pick a color',
     tuneT: 'Tune your car', tuneP: 'Start with a photo. Nothing is uploaded until you render.',
     addPhoto: 'Add a photo of your car', addPhotoP: 'Camera or photo library', sample: 'Try with a sample car',
     tip1: 'The whole car fits in the frame', tip2: 'Daylight or a bright garage', tip3: 'Side or three-quarter angle',
@@ -27,7 +28,7 @@ export const T = {
     galT: 'Gallery', render: 'Render build', tHome: 'Home', tTune: 'Tuning', tGal: 'Gallery',
     setT: 'Settings', langL: 'Language', done: 'Done', again: 'Tune again',
     del: 'Delete build', delQ: 'Delete this build?', keep: 'Keep', del2: 'Delete', deleted: 'Build deleted',
-    paint: 'Paint', finish: 'Finish', wheels: 'Wheels', stance: 'Stance', tint: 'Window tint',
+    paint: 'Paint', finish: 'Finish', wheels: 'Wheels', stance: 'Ride height', tint: 'Window tint',
     none: 'Pick a look or change a part',
     changes: (n: number) => (n === 1 ? '1 change' : `${n} changes`),
     rendering: 'Painting your car right now', renderLong: 'Almost there, finishing the details',
@@ -38,9 +39,13 @@ export const T = {
     vN: (n: number) => `Version ${n}`,
     left: (n: number) => (n === 1 ? '1 free render left' : `${n} free renders left`),
     noneLeft: 'Free renders are used up',
-    signT: 'Get your free renders', signP: (n: number, shop: string) => `${n} free renders of your own car. ${shop} may contact you about your build.`,
+    signT: 'Where to send your result', signP: (n: number, shop: string) => `${n} free renders of your own car. ${shop} may call you about your build.`,
     name: 'Name', namePh: 'First name', phone: 'Phone', email: 'Email',
-    signGo: 'Get free renders and render', signing: 'One moment',
+    signL: 'Get your free renders', signGo: 'Get my result', signing: 'One moment', next: 'Next', back: 'Back', result: 'Result',
+    stepOf: (n: number) => `Step ${n} of 3`, badName: 'Tell us how to call you',
+    stepEmailT: 'Where to send your builds', stepEmailP: 'Same email next time opens your account with the builds and renders left.',
+    stepNameT: 'How should we call you?', stepNameP: 'Last step, then your render starts.',
+    cabinet: 'Your account', cabinetP: (n: number) => (n > 0 ? (n === 1 ? '1 free render left' : `${n} free renders left`) : 'Free renders are used up'),
     badPhone: 'Enter a phone number we can reach you on', badEmail: 'Enter a valid email',
     welcomeBack: 'Welcome back', readyT: 'Your build is ready', readyP: 'Open the app to compare it with your photo.',
     outT: 'You have used your free renders', outP: (shop: string) => `${shop} can render more builds for you and price the parts.`,
@@ -49,6 +54,11 @@ export const T = {
     privacy: 'Your photo is sent only when you tap Render.',
     err: 'Could not render. Please try again.', busyT: 'Too many renders today. Please try again tomorrow.', offline: 'The service is not connected yet.',
     demo: 'Demo for auto businesses',
+    whileP: (shop: string) => `We are painting your car right now. Leave your number to get the result. ${shop} may call you about your build.`,
+    readyP2: 'Your build is ready. Three quick steps and it is yours.',
+    readyLockT: 'Your build is ready', readyLockP: 'Finish the 3 steps below to see it',
+    waitT: 'Your build is on its way', waitP: 'It will appear right here, and we will send a notification. You can leave the app.',
+    looksT: 'Ready looks',
     examplesT: 'Examples', shopLine: 'Paint, wrap, wheels and tuning', callShort: 'Call',
     savePhotos: 'Save to Photos', inGallery: 'Saved in your gallery', newPhoto: 'New photo', custom: 'Custom build',
     pendingP: 'We will send a notification when it is ready.', galEmpty: 'Your builds will show up here. Meanwhile, see what others made.',
@@ -67,7 +77,7 @@ export const T = {
       desktop: 'You are on a computer. Open this address on your phone to install the app:',
       desktopHint: 'In Chrome on a computer the app also installs from the icon at the right of the address bar.',
     },
-    o: { silver: 'Silver', black: 'Black', white: 'White', red: 'Red', green: 'Green', grey: 'Grey', blue: 'Blue', yellow: 'Yellow', gloss: 'Gloss', satin: 'Satin', matte: 'Matte', w_silver: 'Silver', w_black: 'Black', w_bronze: 'Bronze', w_gold: 'Gold', w_graphite: 'Graphite', stock: 'Stock', lowered: 'Lowered', slammed: 'Slammed', clear: 'Clear', light: 'Light', dark: 'Dark' } as Record<string, string>,
+    o: { asIs: 'As now', silver: 'Silver', black: 'Black', white: 'White', red: 'Red', green: 'Green', grey: 'Grey', blue: 'Blue', yellow: 'Yellow', gloss: 'Gloss', satin: 'Satin', matte: 'Matte', w_silver: 'Silver', w_black: 'Black', w_bronze: 'Bronze', w_gold: 'Gold', w_graphite: 'Graphite', stock: 'Stock', lowered: 'Lowered', slammed: 'Slammed', clear: 'None', light: 'Light', dark: 'Dark' } as Record<string, string>,
   },
   ru: {
     before: 'Ваше фото', after: 'Ваша сборка',
@@ -78,7 +88,7 @@ export const T = {
     s1: 'Сфотографируйте машину', s1p: 'Целиком в кадре, сбоку или в три четверти, лучше днём.',
     s2: 'Выберите цвет и диски', s2p: 'Начните с готового образа или подберите цвет, покрытие, диски, посадку и тонировку сами.',
     s3: 'Сравните и сохраните', s3p: 'Проведите по фото, чтобы сравнить. Все сборки остаются в галерее и в приложении.',
-    startT: 'Популярные стили',
+    startT: 'Выберите цвет',
     tuneT: 'Тюнинг', tuneP: 'Начните с фото. Пока не нажмёте «Собрать», ничего не отправляется.',
     addPhoto: 'Добавить фото машины', addPhotoP: 'Камера или галерея телефона', sample: 'Попробовать на примере',
     tip1: 'Машина целиком в кадре', tip2: 'Дневной свет или светлый гараж', tip3: 'Сбоку или в три четверти',
@@ -98,9 +108,13 @@ export const T = {
     vN: (n: number) => `Версия ${n}`,
     left: (n: number) => `Осталось: ${plural(n, 'бесплатная сборка', 'бесплатные сборки', 'бесплатных сборок')}`,
     noneLeft: 'Бесплатные сборки закончились',
-    signT: 'Получите бесплатные сборки', signP: (n: number, shop: string) => `${plural(n, 'бесплатная сборка', 'бесплатные сборки', 'бесплатных сборок')} вашей машины. ${shop} может связаться с вами по сборке.`,
+    signT: 'Куда прислать результат', signP: (n: number, shop: string) => `${plural(n, 'бесплатная сборка', 'бесплатные сборки', 'бесплатных сборок')} вашей машины. ${shop} может позвонить вам по сборке.`,
     name: 'Имя', namePh: 'Как к вам обращаться', phone: 'Телефон', email: 'Email',
-    signGo: 'Получить и собрать', signing: 'Секунду',
+    signL: 'Получите бесплатные сборки', signGo: 'Получить результат', signing: 'Секунду', next: 'Дальше', back: 'Назад', result: 'Результат',
+    stepOf: (n: number) => `Шаг ${n} из 3`, badName: 'Подскажите, как к вам обращаться',
+    stepEmailT: 'Куда прислать сборки', stepEmailP: 'По этой же почте в следующий раз откроется ваш кабинет со сборками и остатком генераций.',
+    stepNameT: 'Как к вам обращаться?', stepNameP: 'Последний шаг, и начнём собирать.',
+    cabinet: 'Ваш кабинет', cabinetP: (n: number) => (n > 0 ? `Осталось: ${plural(n, 'бесплатная сборка', 'бесплатные сборки', 'бесплатных сборок')}` : 'Бесплатные сборки закончились'),
     badPhone: 'Укажите телефон, по которому с вами можно связаться', badEmail: 'Укажите правильный email',
     welcomeBack: 'С возвращением', readyT: 'Сборка готова', readyP: 'Откройте приложение, чтобы сравнить с вашим фото.',
     outT: 'Бесплатные сборки закончились', outP: (shop: string) => `${shop} соберёт для вас ещё варианты и посчитает детали.`,
@@ -109,6 +123,11 @@ export const T = {
     privacy: 'Фото отправляется, только когда вы нажмёте «Собрать».',
     err: 'Не получилось собрать. Попробуйте ещё раз.', busyT: 'Сегодня слишком много сборок. Попробуйте завтра.', offline: 'Сервис ещё не подключён.',
     demo: 'Демо для автобизнеса',
+    whileP: (shop: string) => `Прямо сейчас рисуем вашу машину. Оставьте номер, чтобы получить результат. ${shop} может позвонить вам по сборке.`,
+    readyP2: 'Сборка готова. Три коротких шага, и она ваша.',
+    readyLockT: 'Ваша сборка готова', readyLockP: 'Пройдите 3 шага ниже, чтобы её увидеть',
+    waitT: 'Сборка уже в работе', waitP: 'Она появится прямо здесь, и мы пришлём уведомление. Можно свернуть приложение.',
+    looksT: 'Готовые образы',
     examplesT: 'Примеры', shopLine: 'Покраска, плёнка, диски и тюнинг', callShort: 'Позвонить',
     savePhotos: 'Сохранить в Фото', inGallery: 'Сохранено в галерее', newPhoto: 'Новое фото', custom: 'Своя сборка',
     pendingP: 'Пришлём уведомление, когда будет готово.', galEmpty: 'Здесь появятся ваши сборки. А пока посмотрите, что получилось у других.',
@@ -127,7 +146,76 @@ export const T = {
       desktop: 'Вы на компьютере. Откройте этот адрес на телефоне, чтобы установить приложение:',
       desktopHint: 'В Chrome на компьютере приложение ставится значком справа в адресной строке.',
     },
-    o: { silver: 'Серебро', black: 'Чёрный', white: 'Белый', red: 'Красный', green: 'Зелёный', grey: 'Серый', blue: 'Синий', yellow: 'Жёлтый', gloss: 'Глянец', satin: 'Сатин', matte: 'Мат', w_silver: 'Серебро', w_black: 'Чёрные', w_bronze: 'Бронза', w_gold: 'Золото', w_graphite: 'Графит', stock: 'Заводская', lowered: 'Ниже', slammed: 'Низко', clear: 'Нет', light: 'Светлая', dark: 'Тёмная' } as Record<string, string>,
+    o: { asIs: 'Как сейчас', silver: 'Серебро', black: 'Чёрный', white: 'Белый', red: 'Красный', green: 'Зелёный', grey: 'Серый', blue: 'Синий', yellow: 'Жёлтый', gloss: 'Глянец', satin: 'Сатин', matte: 'Мат', w_silver: 'Серебро', w_black: 'Чёрные', w_bronze: 'Бронза', w_gold: 'Золото', w_graphite: 'Графит', stock: 'Заводская', lowered: 'Ниже', slammed: 'Низко', clear: 'Нет', light: 'Светлая', dark: 'Тёмная' } as Record<string, string>,
+  },
+  es: {
+    before: 'Tu foto', after: 'Tu versión',
+    heroT: 'Mira tu auto con otro color y otros rines',
+    heroP: 'Sube una foto de tu propio auto, elige pintura y rines y obtén una imagen realista en unos 30 segundos. Antes de pagar por una sola pieza.',
+    ctaUpload: 'Sube tu auto', freeNote: (n: number) => `${n} renders gratis, sin tarjeta`,
+    howT: 'Cómo funciona',
+    s1: 'Toma una foto', s1p: 'El auto completo en el cuadro, de lado o en tres cuartos, mejor con luz de día.',
+    s2: 'Elige color y rines', s2p: 'Empieza con un estilo listo o elige tú la pintura, el acabado, los rines, la altura y el polarizado.',
+    s3: 'Compara y guárdalo', s3p: 'Desliza sobre la foto para comparar. Cada versión queda en tu galería y en la app.',
+    startT: 'Elige un color',
+    tuneT: 'Personaliza tu auto', tuneP: 'Empieza con una foto. No se envía nada hasta que generes.',
+    addPhoto: 'Agrega una foto de tu auto', addPhotoP: 'Cámara o galería', sample: 'Probar con un auto de ejemplo',
+    tip1: 'El auto completo en el cuadro', tip2: 'Luz de día o un garaje iluminado', tip3: 'De lado o en tres cuartos',
+    yourCar: 'Tu auto', styles: 'Estilos', parts: 'Piezas',
+    save: 'Guardar en la galería', saved: 'Guardado en la galería', share: 'Compartir', more: 'Cambiar más',
+    galT: 'Galería', render: 'Generar', tHome: 'Inicio', tTune: 'Tuning', tGal: 'Galería',
+    setT: 'Ajustes', langL: 'Idioma', done: 'Listo', again: 'Modificar otra vez',
+    del: 'Borrar versión', delQ: '¿Borrar esta versión?', keep: 'Conservar', del2: 'Borrar', deleted: 'Versión borrada',
+    paint: 'Pintura', finish: 'Acabado', wheels: 'Rines', stance: 'Altura', tint: 'Polarizado',
+    none: 'Elige un estilo o cambia una pieza',
+    changes: (n: number) => (n === 1 ? '1 cambio' : `${n} cambios`),
+    rendering: 'Estamos pintando tu auto ahora mismo', renderLong: 'Casi listo, terminando los detalles',
+    renderHint: 'Unos 30 segundos. Puedes salir de la app, te enviaremos una notificación.',
+    rsteps: ['Subiendo tu foto', 'Leyendo la forma de la carrocería', 'Aplicando la nueva pintura', 'Montando los rines', 'Agregando luz y reflejos', 'Últimos detalles'],
+    builds: (n: number) => (n === 1 ? '1 versión' : `${n} versiones`),
+    emptyT: 'Aún no hay versiones', emptyP: 'Tus renders aparecerán aquí.', example: 'Ejemplo', today: 'Hoy',
+    vN: (n: number) => `Versión ${n}`,
+    left: (n: number) => (n === 1 ? 'Te queda 1 render gratis' : `Te quedan ${n} renders gratis`),
+    noneLeft: 'Ya usaste tus renders gratis',
+    signT: 'A dónde enviamos tu resultado', signP: (n: number, shop: string) => `${n} renders gratis de tu propio auto. ${shop} puede llamarte sobre tu versión.`,
+    name: 'Nombre', namePh: 'Tu nombre', phone: 'Teléfono', email: 'Email',
+    signL: 'Obtén tus renders gratis', signGo: 'Ver mi resultado', signing: 'Un momento', next: 'Siguiente', back: 'Atrás', result: 'Resultado',
+    stepOf: (n: number) => `Paso ${n} de 3`, badName: 'Dinos cómo llamarte',
+    stepEmailT: 'A dónde enviamos tus versiones', stepEmailP: 'Con el mismo email, la próxima vez se abre tu cuenta con tus versiones y renders restantes.',
+    stepNameT: '¿Cómo te llamamos?', stepNameP: 'Último paso y listo.',
+    cabinet: 'Tu cuenta', cabinetP: (n: number) => (n > 0 ? (n === 1 ? 'Te queda 1 render gratis' : `Te quedan ${n} renders gratis`) : 'Ya usaste tus renders gratis'),
+    badPhone: 'Escribe un teléfono donde podamos contactarte', badEmail: 'Escribe un email válido',
+    welcomeBack: 'Bienvenido de nuevo', readyT: 'Tu versión está lista', readyP: 'Abre la app para compararla con tu foto.',
+    outT: 'Ya usaste tus renders gratis', outP: (shop: string) => `${shop} puede hacerte más versiones y cotizar las piezas.`,
+    call: 'Llamar al taller', sendShop: 'Enviar al taller',
+    account: 'Tu cuenta', signOut: 'Cerrar sesión en este teléfono',
+    privacy: 'Tu foto se envía solo cuando tocas Generar.',
+    err: 'No se pudo generar. Inténtalo de nuevo.', busyT: 'Demasiados renders hoy. Inténtalo mañana.', offline: 'El servicio aún no está conectado.',
+    demo: 'Demo para negocios automotrices',
+    whileP: (shop: string) => `Estamos pintando tu auto ahora mismo. Deja tu número para recibir el resultado. ${shop} puede llamarte sobre tu versión.`,
+    readyP2: 'Tu versión está lista. Tres pasos rápidos y es tuya.',
+    readyLockT: 'Tu versión está lista', readyLockP: 'Completa los 3 pasos de abajo para verla',
+    waitT: 'Tu versión está en camino', waitP: 'Aparecerá aquí mismo y te enviaremos una notificación. Puedes salir de la app.',
+    looksT: 'Estilos listos',
+    examplesT: 'Ejemplos', shopLine: 'Pintura, vinil, rines y tuning', callShort: 'Llamar',
+    savePhotos: 'Guardar en Fotos', inGallery: 'Guardado en tu galería', newPhoto: 'Nueva foto', custom: 'Versión propia',
+    pendingP: 'Te avisaremos cuando esté lista.', galEmpty: 'Aquí aparecerán tus versiones. Mientras tanto, mira lo que hicieron otros.',
+    pushAsk: 'Recibe un aviso cuando tu versión esté lista', pushGo: 'Activar', pushOn: 'Notificaciones activadas',
+    inst: {
+      title: (shop: string) => `Instala la app de ${shop}`,
+      why: 'Tu versión llega como notificación a tu teléfono y todas quedan guardadas en la app. A un toque desde tu pantalla de inicio.',
+      go: 'Instalar', later: 'Más tarde',
+      firstT: 'Tus renders gratis están activos', firstP: 'Tu versión ya se está generando. Último paso: instala la app para que el resultado llegue a tu teléfono.',
+      iosT: 'En iPhone: 3 toques', ios1: 'Abre esta página en Safari', ios1other: 'Abre esta página en Safari o toca Compartir en la barra de direcciones',
+      ios2: 'Toca Compartir (el cuadro con la flecha)', ios3: 'Elige “Agregar a inicio”',
+      andT: 'En Android: 2 toques', and1: 'Abre el menú del navegador', and2: 'Elige “Instalar app” o “Agregar a la pantalla principal”',
+      done: 'La app está instalada. Ábrela desde tu pantalla de inicio.',
+      banner: 'Instala la app para recibir tus versiones como notificación',
+      openBrowser: 'Abre este enlace en Safari o Chrome para instalar la app',
+      desktop: 'Estás en una computadora. Abre esta dirección en tu teléfono para instalar la app:',
+      desktopHint: 'En Chrome para computadora, la app también se instala con el ícono a la derecha de la barra de direcciones.',
+    },
+    o: { asIs: 'Como está', silver: 'Plata', black: 'Negro', white: 'Blanco', red: 'Rojo', green: 'Verde', grey: 'Gris', blue: 'Azul', yellow: 'Amarillo', gloss: 'Brillante', satin: 'Satinado', matte: 'Mate', w_silver: 'Plata', w_black: 'Negros', w_bronze: 'Bronce', w_gold: 'Dorados', w_graphite: 'Grafito', stock: 'De fábrica', lowered: 'Más bajo', slammed: 'Muy bajo', clear: 'Sin', light: 'Claro', dark: 'Oscuro' } as Record<string, string>,
   },
 } satisfies Record<Lang, unknown>
 
@@ -136,8 +224,15 @@ export type Dict = (typeof T)['en']
 export function initialLang(): Lang {
   try {
     const l = localStorage.getItem('cs-lang')
-    if (l === 'en' || l === 'ru') return l
+    if (l === 'en' || l === 'ru' || l === 'es') return l
   } catch { /* private mode */ }
+  // First visit: the phone's language when we have it.
+  for (const n of navigator.languages ?? [navigator.language]) {
+    const c = n.slice(0, 2).toLowerCase()
+    if (c === 'ru' || c === 'uk' || c === 'be' || c === 'kk') return 'ru'
+    if (c === 'es') return 'es'
+    if (c === 'en') return 'en'
+  }
   return 'en'
 }
 

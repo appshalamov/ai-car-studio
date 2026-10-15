@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { T, useT } from '../lib/i18n'
 import { DEF, PARTS, STYLES, buildPrompt, changes, summary, swatch, type Sel, type Style } from '../lib/build'
 import { fileToDataUrl, shareDataUrl, urlToDataUrl } from '../lib/image'
@@ -10,25 +10,28 @@ import { IAngle, ICam, ICar, IPhone, ISun } from '../components/Icons'
 
 type Version = { img: string; sel: Sel; style: string | null; label: string }
 
-export type TuneRequest = { sample?: boolean; file?: File; url?: string; n: number }
+export type TuneRequest = { sample?: boolean; file?: File; url?: string; style?: string; n: number }
 
 type Props = {
   active: boolean
   brand: Brand
   cars: Car[]
-  /** Requests from other screens: the sample car, a photo picked on Home, or a gallery build to tune again. */
+  /** Requests from other screens: the sample car, a photo picked on Home, a look, or a gallery build to tune again. */
   incoming: TuneRequest | null
   freeLeft: number | null
+  /** Shown in place of the options while the first render runs, until the client leaves contacts. */
+  contacts: ReactNode | null
   render: (photo: string, prompt: string, label: string, title: string) => Promise<string | null>
   toast: (m: string) => void
 }
 
-export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }: Props) {
+const opt = (k: keyof Sel) => PARTS.find((p) => p.k === k)!.opts
+
+export function Tune({ active, brand, cars, incoming, freeLeft, contacts, render, toast }: Props) {
   const { t, lang } = useT()
   const [photo, setPhoto] = useState<string | null>(null)
   const [sel, setSel] = useState<Sel>(DEF)
   const [style, setStyle] = useState<Style | null>(null)
-  const [tab, setTab] = useState<'styles' | 'parts'>('styles')
   const [versions, setVersions] = useState<Version[]>([])
   const [cur, setCur] = useState(0)
   const [view, setView] = useState<'pick' | 'result'>('pick')
@@ -41,13 +44,16 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
     setStyle(s)
     setSel(s ? { ...s.set } : DEF)
   }
+  const set = (k: keyof Sel, o: string) => {
+    setStyle(null)
+    // Tapping the chosen color or wheels again goes back to how the car is now.
+    setSel((s) => ({ ...s, [k]: s[k] === o && (k === 'paint' || k === 'wheels') ? DEF[k] : o }))
+  }
 
   const takePhoto = (p: string) => { setPhoto(p); setVersions([]); setView('pick') }
-
   const loadUrl = async (url: string) => {
     try { takePhoto(await urlToDataUrl(url, 1600)) } catch { toast(t.err) }
   }
-
   const onFile = async (f?: File) => {
     if (!f) return
     try { takePhoto(await fileToDataUrl(f, 1600)) } catch (e) { toast((e as Error).message) }
@@ -58,6 +64,7 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
     if (incoming.file) onFile(incoming.file)
     else if (incoming.url) loadUrl(incoming.url)
     else if (incoming.sample && !photo) loadUrl(cars[0].before)
+    if (incoming.style) pickStyle(incoming.style)
     // Only react to a new request, not to state changes it causes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [incoming?.n])
@@ -83,9 +90,11 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
   }
 
   const v = versions[cur]
+  const locked = !!contacts && view === 'result' && !busy
+  const name = (k: keyof Sel, o: string) => (o === 'stock' ? t.o.asIs : t.o[k === 'wheels' ? 'w_' + o : o])
 
   return (
-    <section className="screen" hidden={!active} aria-label={t.tTune}>
+    <section className={`screen ${contacts && (busy || locked) ? 'contacting' : ''}`} hidden={!active} aria-label={t.tTune}>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }} />
       {!photo ? (
         <div className="pad">
@@ -106,51 +115,76 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
       ) : (
         <>
           <div className="viewer" ref={top}>
-            <div className="vtop"><b>{t.yourCar}</b><button className="ibtn" onClick={() => fileRef.current?.click()} aria-label={t.addPhoto} disabled={busy}><ICam /></button></div>
+            <div className="vtop"><b>{t.yourCar}</b><button className="ibtn" onClick={() => fileRef.current?.click()} aria-label={t.addPhoto} disabled={busy || !!contacts}><ICam /></button></div>
             <div className="vimg">
               {view === 'result' && v && !busy
-                ? <BeforeAfter key={cur} before={photo} after={v.img} labels={[t.before, t.after]} />
+                ? locked
+                  ? <div className="lockedres"><img src={v.img} alt="" /><p><b>{t.readyLockT}</b><span>{t.readyLockP}</span></p></div>
+                  : <BeforeAfter key={cur} before={photo} after={v.img} labels={[t.before, t.after]} />
                 : <img src={photo} alt={t.yourCar} />}
               {busy && <Rendering steps={t.rsteps} />}
             </div>
           </div>
-          {view === 'pick' ? (
-            <div className={busy ? 'locked' : undefined}>
-              <div className="tabs" role="tablist">
-                <button role="tab" aria-selected={tab === 'styles'} onClick={() => setTab('styles')}>{t.styles}</button>
-                <button role="tab" aria-selected={tab === 'parts'} onClick={() => setTab('parts')}>{t.parts}</button>
+
+          {contacts && (busy || locked) ? (
+            <div className="contacts pad">{contacts}</div>
+          ) : busy ? (
+            <div className="waiting pad"><b>{t.waitT}</b><span>{t.waitP}</span></div>
+          ) : view === 'pick' ? (
+            <div className="cfg">
+              <h4 className="cfg-h pad">{t.looksT}</h4>
+              <div className="rail looks-rail compact">
+                {STYLES.map((s) => {
+                  const c = swatch(s.set)
+                  return (
+                    <button key={s.id} aria-pressed={style?.id === s.id} onClick={() => pickStyle(style?.id === s.id ? null : s.id)}>
+                      <span className="look" style={{ '--p': c.paint ?? 'transparent', '--w': c.wheels ?? 'transparent' } as React.CSSProperties} data-stock={c.paint ? undefined : ''} aria-hidden />
+                      <b>{s[lang][0]}</b>
+                    </button>
+                  )
+                })}
               </div>
-              {tab === 'styles' ? (
-                <div className="looks">
-                  {STYLES.map((s) => {
-                    const c = swatch(s.set)
-                    return (
-                      <button key={s.id} aria-pressed={style?.id === s.id} onClick={() => pickStyle(style?.id === s.id ? null : s.id)}>
-                        <span className="look" style={{ '--p': c.paint ?? 'transparent', '--w': c.wheels ?? 'transparent' } as React.CSSProperties} data-stock={c.paint ? undefined : ''} aria-hidden />
-                        <b>{s[lang][0]}</b><span>{s[lang][1]}</span>
-                      </button>
-                    )
-                  })}
+
+              <section className="part">
+                <h4><span className="pn">1</span>{t.paint}<em>{name('paint', sel.paint)}</em></h4>
+                <div className="sw2">
+                  {[['stock', ''] as [string, string?], ...opt('paint')].map(([o, c]) => (
+                    <button key={o} aria-pressed={sel.paint === o} onClick={() => set('paint', o)}>
+                      <i style={{ '--c': c || 'transparent' } as React.CSSProperties} data-stock={c ? undefined : ''} />
+                      <span>{name('paint', o)}</span>
+                    </button>
+                  ))}
                 </div>
-              ) : (
-                <div>
-                  {PARTS.map((p) => {
-                    const val = sel[p.k]
-                    const name = (o: string) => t.o[p.k === 'wheels' ? 'w_' + o : o]
-                    const set = (o: string) => { setStyle(null); setSel((s) => ({ ...s, [p.k]: s[p.k] === o && p.k !== 'stance' && p.k !== 'tint' ? DEF[p.k] : o })) }
-                    return (
-                      <div className="part" key={p.k}>
-                        <h4>{t[p.k]}<span>{val === 'stock' ? t.o.stock : name(val)}</span></h4>
-                        {p.type === 'sw' ? (
-                          <div className="sw">{p.opts.map(([o, c]) => <button key={o} style={{ '--c': c } as React.CSSProperties} aria-pressed={val === o} aria-label={name(o)} onClick={() => set(o)} />)}</div>
-                        ) : (
-                          <div className="opt">{p.opts.map(([o]) => <button key={o} aria-pressed={val === o} onClick={() => set(o)}>{name(o)}</button>)}</div>
-                        )}
-                      </div>
-                    )
-                  })}
+                <div className="seg" role="group" aria-label={t.finish}>
+                  {opt('finish').map(([o]) => <button key={o} aria-pressed={sel.finish === o} onClick={() => set('finish', sel.finish === o ? 'stock' : o)}>{t.o[o]}</button>)}
                 </div>
-              )}
+              </section>
+
+              <section className="part">
+                <h4><span className="pn">2</span>{t.wheels}<em>{name('wheels', sel.wheels)}</em></h4>
+                <div className="sw2 wheels">
+                  {[['stock', ''] as [string, string?], ...opt('wheels')].map(([o, c]) => (
+                    <button key={o} aria-pressed={sel.wheels === o} onClick={() => set('wheels', o)}>
+                      <i style={{ '--c': c || 'transparent' } as React.CSSProperties} data-stock={c ? undefined : ''} />
+                      <span>{name('wheels', o)}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="part">
+                <h4><span className="pn">3</span>{t.tint}<em>{t.o[sel.tint]}</em></h4>
+                <div className="seg tints" role="group" aria-label={t.tint}>
+                  {opt('tint').map(([o]) => <button key={o} aria-pressed={sel.tint === o} onClick={() => set('tint', o)}><i data-t={o} />{t.o[o]}</button>)}
+                </div>
+              </section>
+
+              <section className="part">
+                <h4><span className="pn">4</span>{t.stance}<em>{t.o[sel.stance]}</em></h4>
+                <div className="seg" role="group" aria-label={t.stance}>
+                  {opt('stance').map(([o]) => <button key={o} aria-pressed={sel.stance === o} onClick={() => set('stance', o)}>{t.o[o]}</button>)}
+                </div>
+              </section>
               <div className="dock-space" />
             </div>
           ) : v && (
@@ -176,7 +210,7 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
           )}
           {active && view === 'pick' && !busy && (
             <div className="dock">
-              <p className="cnt">{n ? `${t.changes(n)}${freeLeft != null ? ' · ' + t.left(freeLeft) : ''}` : t.none}</p>
+              <p className="cnt">{n ? `${label}${freeLeft != null ? ' · ' + t.left(freeLeft) : ''}` : t.none}</p>
               <button className="cta" onClick={go} disabled={!n}>{t.render}</button>
             </div>
           )}

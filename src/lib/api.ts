@@ -11,7 +11,7 @@ export type ApiError = Error & { status?: number }
 export const PLACEHOLDER_NAME = 'Auto Studio'
 export const DEFAULT_BRAND: Brand = { name: '', phone: '', logo: null, free: 3, vapidPublic: null }
 export const shopName = (b: Brand) => b.name.trim() || PLACEHOLDER_NAME
-export type Me = { token: string; left: number; name?: string }
+export type Me = { token: string; left: number; name?: string; /** started a render before leaving contacts */ anon?: boolean }
 
 const ME_KEY = 'acs.me'
 
@@ -90,18 +90,27 @@ export function getMe(): Me | null {
 function setMe(m: Me) { try { localStorage.setItem(ME_KEY, JSON.stringify(m)) } catch { /* ignore */ } }
 
 /** Phone + email unlock the free renders. Re-registering with the same contacts returns the same account. */
-export async function register(p: { name?: string; phone: string; email: string }): Promise<Me> {
-  const r = await req<Me>('/register', { method: 'POST', body: JSON.stringify({ ...p, shop: currentShop() }) })
-  const me = { ...r, name: p.name }
+/** Starts a session without contacts, so the first render can run while the client fills them in. */
+export async function startSession(): Promise<Me> {
+  const r = await req<{ token: string; left: number }>('/start', { method: 'POST', body: JSON.stringify({ shop: currentShop() }) })
+  const me: Me = { token: r.token, left: r.left, anon: true }
   setMe(me)
   return me
+}
+
+export async function register(p: { name?: string; phone: string; email: string }): Promise<Me & { returning: boolean }> {
+  const cur = getMe()
+  const r = await req<Me & { returning?: boolean }>('/register', { method: 'POST', body: JSON.stringify({ ...p, shop: currentShop() }) }, cur?.anon ? { 'X-User': cur.token } : {})
+  const me: Me = { token: r.token, left: r.left, name: r.name || p.name }
+  setMe(me)
+  return Object.assign(me, { returning: !!r.returning })
 }
 
 export async function refreshMe(): Promise<Me | null> {
   const me = getMe()
   if (!me) return null
-  const r = await req<{ left: number; name?: string }>('/me', {}, { 'X-User': me.token })
-  const next = { ...me, left: r.left, name: me.name || r.name }
+  const r = await req<{ left: number; name?: string; anon?: boolean }>('/me', {}, { 'X-User': me.token })
+  const next = { ...me, left: r.left, name: me.name || r.name, anon: !!r.anon }
   setMe(next)
   return next
 }
@@ -111,7 +120,9 @@ export async function generate(p: { prompt: string; images: string[]; label?: st
   const me = getMe()
   if (!me) throw Object.assign(new Error('Нужна регистрация'), { status: 401 })
   const r = await req<{ image: string; left: number }>('/generate', { method: 'POST', body: JSON.stringify({ prompt: p.prompt, images: p.images, label: p.label, title: p.title }), signal: p.signal }, { 'X-User': me.token })
-  setMe({ ...me, left: r.left })
+  // The client may have left contacts (new token, no longer anonymous) while this ran.
+  const now = getMe()
+  if (now) setMe({ ...now, left: r.left })
   return r
 }
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LangCtx, T, initialLang, useT, type Lang } from './lib/i18n'
-import { cachedBrand, deleteBuild, forgetMe, generate, getMe, myBuilds, readLaunchParams, refreshBrand, refreshMe, register, shopName, subscribeMe, syncInstallMeta, type ApiError, type Brand, type Me } from './lib/api'
+import { LANGS, LangCtx, T, initialLang, useT, type Lang } from './lib/i18n'
+import { cachedBrand, deleteBuild, forgetMe, generate, getMe, myBuilds, readLaunchParams, refreshBrand, refreshMe, register, shopName, startSession, subscribeMe, syncInstallMeta, type ApiError, type Brand, type Me } from './lib/api'
 import { useCars } from './lib/cars'
 import { shareUrl } from './lib/image'
 import { askNotifyPermission, notify } from './lib/notify'
@@ -14,7 +14,7 @@ import { Install, installLater, isPhone, isStandalone } from './components/Insta
 import { IGallery, IHome, IPhone, ITune } from './components/Icons'
 
 type Tab = 'home' | 'tune' | 'gal'
-type Pending = { photo: string; prompt: string; label: string; title: string; resolve: (img: string | null) => void }
+type RenderReq = { photo: string; prompt: string; label: string; title: string }
 
 // Read ?s=<shop>&u=<client> before anything else: the installed app opens with them.
 const launch = readLaunchParams()
@@ -40,7 +40,6 @@ export default function App() {
   const [item, setItem] = useState<GalleryItem | null>(null)
   const [confirmDel, setConfirmDel] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
-  const pending = useRef<Pending | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const toastT = useRef<ReturnType<typeof setTimeout>>(undefined)
 
@@ -88,19 +87,19 @@ export default function App() {
   }
 
   /** Runs one render for a signed-up client. Returns the image, or null when it did not happen. */
-  const doRender = async (c: Me, p: Omit<Pending, 'resolve'>): Promise<string | null> => {
+  const doRender = async (c: Me, p: RenderReq): Promise<string | null> => {
     if (c.left <= 0) { setSheet('out'); return null }
     // Still inside the tap that started the render, so iPhone allows the permission prompt.
     askNotifyPermission().then((ok) => { setPerm(pushPerm()); if (ok) subscribeMe(brand, lang).catch(() => {}) }).catch(() => {})
     setRendering(true)
     try {
       const r = await generate({ prompt: p.prompt, images: [p.photo], label: p.label, title: p.title })
-      setClient({ ...c, left: r.left })
+      setClient((cur) => (cur ? { ...cur, left: r.left } : cur))
       notify(t.readyT, t.readyP, brand.logo ?? undefined)
       return r.image
     } catch (e) {
       const err = e as ApiError
-      if (err.status === 401) { forgetMe(); setClient(null); setSheet('signup'); return null }
+      if (err.status === 401) { forgetMe(); setClient(null); toast(t.err); return null }
       if (err.status === 402) { setClient({ ...c, left: 0 }); setSheet('out'); return null }
       toast(!err.status ? t.offline : err.status === 429 ? t.busyT : t.err)
       return null
@@ -110,16 +109,26 @@ export default function App() {
     }
   }
 
-  const requestRender = (photo: string, prompt: string, label: string, title: string) => {
-    if (client) return doRender(client, { photo, prompt, label, title })
-    return new Promise<string | null>((resolve) => {
-      pending.current = { photo, prompt, label, title, resolve }
-      setSheet('signup')
-    })
+  /** A new visitor's first render starts at once; the contact steps take the place of the options while it runs. */
+  const requestRender = async (photo: string, prompt: string, label: string, title: string) => {
+    let c = client
+    if (!c) {
+      try { c = await startSession() } catch (e) { const x = e as ApiError; toast(!x.status ? t.offline : x.status === 429 ? t.busyT : t.err); return null }
+      setClient(c)
+    }
+    return doRender(c, { photo, prompt, label, title })
+  }
+
+  const onContacts = (c: Me, returning: boolean) => {
+    setClient(c)
+    syncInstallMeta(brand)
+    loadBuilds()
+    if (returning) toast(c.name ? `${t.welcomeBack}, ${c.name}` : t.welcomeBack)
+    // The install pop-up comes before the result is shown.
+    if (!standalone && !installLater()) showInstall(!returning)
   }
 
   const closeSheet = () => {
-    if (pending.current) { pending.current.resolve(null); pending.current = null }
     setSheet(null)
     setConfirmDel(false)
   }
@@ -137,11 +146,21 @@ export default function App() {
     <LangCtx.Provider value={{ lang, t, setLang }}>
       <div className="app">
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) openTune({ file: f }) }} />
-        {tab === 'home' && <Home brand={brand} cars={cars} freeLeft={freeLeft} onUpload={() => fileRef.current?.click()} onSettings={() => setSheet('settings')} />}
-        <Tune active={tab === 'tune'} brand={brand} cars={cars} incoming={incoming} freeLeft={client ? client.left : null} render={requestRender} toast={toast} />
+        {tab === 'home' && <Home brand={brand} cars={cars} freeLeft={freeLeft} onUpload={() => fileRef.current?.click()} onStyle={(id) => openTune({ sample: true, style: id })} onSettings={() => setSheet('settings')} />}
+        <Tune
+          active={tab === 'tune'}
+          brand={brand}
+          cars={cars}
+          incoming={incoming}
+          freeLeft={client && !client.anon ? client.left : null}
+          contacts={client?.anon ? <SignUp brand={brand} rendering={rendering} onDone={onContacts} /> : null}
+          render={requestRender}
+          toast={toast}
+        />
         <Gallery
           active={tab === 'gal'}
           items={gallery}
+          client={client}
           pending={rendering || serverPending}
           askPush={!!client && standalone && perm === 'default' && !!brand.vapidPublic}
           installBanner={!!client && !standalone && isPhone()}
@@ -160,8 +179,7 @@ export default function App() {
           <h3>{t.setT}</h3>
           <div className="field"><label>{t.langL}</label>
             <div className="opt">
-              <button aria-pressed={lang === 'en'} onClick={() => setLang('en')}>English</button>
-              <button aria-pressed={lang === 'ru'} onClick={() => setLang('ru')}>Русский</button>
+              {LANGS.map(([l, n]) => <button key={l} aria-pressed={lang === l} onClick={() => setLang(l)}>{n}</button>)}
             </div>
           </div>
           {client && (
@@ -177,20 +195,6 @@ export default function App() {
           )}
           <div className="field"><small>{t.privacy}</small></div>
           <button className="cta" style={{ marginTop: 22 }} onClick={closeSheet}>{t.done}</button>
-        </Sheet>
-
-        <Sheet open={sheet === 'signup'} onClose={closeSheet} label={t.signT}>
-          <SignUp brand={brand} onDone={(c, returning) => {
-            setClient(c)
-            syncInstallMeta(brand)
-            if (returning) toast(t.welcomeBack)
-            const p = pending.current
-            pending.current = null
-            // The render starts right away; the install pop-up covers the wait, before the result.
-            if (!standalone && !installLater()) showInstall(!returning)
-            else setSheet(null)
-            if (p) doRender(c, p).then(p.resolve)
-          }} />
         </Sheet>
 
         <Sheet open={sheet === 'install'} onClose={closeSheet} label={t.inst.title(shopName(brand))}>
@@ -239,40 +243,53 @@ export default function App() {
   )
 }
 
-function SignUp({ brand, onDone }: { brand: Brand; onDone: (c: Me, returning: boolean) => void }) {
+function SignUp({ brand, rendering, onDone }: { brand: Brand; rendering: boolean; onDone: (c: Me, returning: boolean) => void }) {
   const { t } = useT()
   const [f, setF] = useState({ name: '', phone: '', email: '' })
-  const [err, setErr] = useState<{ phone?: string; email?: string; form?: string }>({})
+  const [step, setStep] = useState(0) // 0 phone, 1 email, 2 name
+  const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const keys = ['phone', 'email', 'name'] as const
+  const k = keys[step]
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ne: typeof err = {}
-    if (f.phone.replace(/\D/g, '').length < 10) ne.phone = t.badPhone
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) ne.email = t.badEmail
-    setErr(ne)
-    if (ne.phone || ne.email) return
+    if (step === 0 && f.phone.replace(/\D/g, '').length < 10) return setErr(t.badPhone)
+    if (step === 1 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) return setErr(t.badEmail)
+    if (step === 2 && !f.name.trim()) return setErr(t.badName)
+    setErr(null)
+    if (step < 2) return setStep(step + 1)
     setBusy(true)
     try {
-      const before = getMe()?.token
       const m = await register(f)
-      onDone(m, m.token === before)
+      onDone(m, m.returning)
     } catch (e2) {
       const x = e2 as ApiError
-      if (x.status === 400) setErr(/email/i.test(x.message) ? { email: t.badEmail } : { phone: t.badPhone })
-      else setErr({ form: !x.status ? t.offline : x.status === 429 ? t.busyT : t.err })
+      if (x.status === 400) { const email = /email/i.test(x.message); setStep(email ? 1 : 0); setErr(email ? t.badEmail : t.badPhone) }
+      else setErr(!x.status ? t.offline : x.status === 429 ? t.busyT : t.err)
     } finally {
       setBusy(false)
     }
   }
+
+  const field = {
+    phone: <input id="su-phone" key="phone" autoFocus type="tel" inputMode="tel" autoComplete="tel" placeholder="(555) 123-4567" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} aria-invalid={!!err} />,
+    email: <input id="su-email" key="email" autoFocus type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} aria-invalid={!!err} />,
+    name: <input id="su-name" key="name" autoFocus autoComplete="given-name" placeholder={t.namePh} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} aria-invalid={!!err} />,
+  }[k]
+
   return (
     <form onSubmit={submit} noValidate>
-      <h3>{t.signT}</h3>
-      <p className="sheet-p">{t.signP(brand.free, shopName(brand))}</p>
-      <div className="field"><label htmlFor="su-name">{t.name}</label><input id="su-name" autoComplete="given-name" placeholder={t.namePh} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></div>
-      <div className="field"><label htmlFor="su-phone">{t.phone}</label><input id="su-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(555) 123-4567" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} aria-invalid={!!err.phone} />{err.phone && <small className="bad">{err.phone}</small>}</div>
-      <div className="field"><label htmlFor="su-email">{t.email}</label><input id="su-email" type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} aria-invalid={!!err.email} />{err.email && <small className="bad">{err.email}</small>}</div>
-      {err.form && <p className="bad">{err.form}</p>}
-      <button className="cta" style={{ marginTop: 22 }} disabled={busy}>{busy ? t.signing : t.signGo}</button>
+      <ol className="stepper" aria-label={t.stepOf(step + 1)}>
+        {[t.phone, t.email, t.name, t.result].map((l, i) => (
+          <li key={l} data-state={i < step ? 'done' : i === step ? 'now' : i === 3 && rendering ? 'wait' : undefined}><i>{i < step ? '✓' : i + 1}</i><span>{l}</span></li>
+        ))}
+      </ol>
+      <h3>{[t.signT, t.stepEmailT, t.stepNameT][step]}</h3>
+      <p className="sheet-p">{step === 0 ? (rendering ? t.whileP(shopName(brand)) : t.readyP2) : step === 1 ? t.stepEmailP : t.stepNameP}</p>
+      <div className="field"><label htmlFor={`su-${k}`}>{t[k]}</label>{field}{err && <small className="bad">{err}</small>}</div>
+      <button className="cta" style={{ marginTop: 22 }} disabled={busy}>{busy ? t.signing : step < 2 ? t.next : t.signGo}</button>
+      {step > 0 && <button type="button" className="linkbtn back" onClick={() => { setErr(null); setStep(step - 1) }}>{t.back}</button>}
     </form>
   )
 }

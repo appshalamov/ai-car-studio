@@ -251,3 +251,29 @@ describe('client push: "your build is ready"', () => {
     expect((await call('/builds', { user: token })).body.builds[0].label).toBe('Блэкаут')
   })
 })
+
+describe('render first, contacts while it runs', () => {
+  it('starts without contacts, then the contacts complete the same client with the build', async () => {
+    const { token, left } = (await call('/start', { method: 'POST', body: { shop: 'main' } })).body
+    expect(left).toBe(3)
+    expect((await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img], label: 'Blackout' } })).status).toBe(200)
+    const r = (await call('/register', { method: 'POST', user: token, body: { name: 'Ann', phone: '+1 555 444 3333', email: 'ann@example.com' } })).body
+    expect(r).toMatchObject({ token, left: 2, name: 'Ann' })
+    expect(r.returning).toBeUndefined()
+    expect((await call('/builds', { user: token })).body.builds).toHaveLength(1)
+    const c = (await call('/admin/clients', { admin: 'pw' })).body.find((x) => x.id === token)
+    expect(c).toMatchObject({ name: 'Ann', email: 'ann@example.com', used: 1, anon: false })
+  })
+
+  it('same email later = the same account: renders and builds are shared, the old token keeps working', async () => {
+    const first = (await register({ email: 'joe@example.com', phone: '5551110000' })).body.token
+    await call('/generate', { method: 'POST', user: first, body: { prompt: 'x', images: [img], label: 'One' } })
+    const anon = (await call('/start', { method: 'POST', body: {} })).body.token
+    await call('/generate', { method: 'POST', user: anon, body: { prompt: 'x', images: [img], label: 'Two' } })
+    const r = (await call('/register', { method: 'POST', user: anon, body: { phone: '5559998888', email: 'JOE@example.com' } })).body
+    expect(r).toMatchObject({ token: first, left: 1, returning: true })
+    expect((await call('/builds', { user: first })).body.builds.map((b) => b.label)).toEqual(['Two', 'One'])
+    expect((await call('/me', { user: anon })).body.left).toBe(1)
+    expect((await call('/admin/clients', { admin: 'pw' })).body).toHaveLength(1)
+  })
+})

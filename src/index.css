@@ -230,3 +230,88 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .rbar { width: 100%; height: 6px; border-radius: 3px; background: var(--hair); overflow: hidden; margin: 6px 0 2px }
 .rbar i { display: block; height: 100%; border-radius: 3px; background: var(--signal); transition: width 1s linear }
 .locked { pointer-events: none; opacity: .45; transition: opacity .3s }
+
+/* home: color looks rail */
+.rail { display: flex; gap: 10px; overflow-x: auto; padding: 0 20px 4px; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-padding: 0 20px }
+.rail::-webkit-scrollbar { display: none }
+.looks-rail button { flex: 0 0 132px; scroll-snap-align: start; display: grid; justify-items: start; gap: 2px; text-align: left; padding: 14px; border-radius: 18px; background: var(--paper) }
+.looks-rail .look { width: 52px; height: 52px; margin-bottom: 10px }
+.looks-rail .look::after { width: 22px; height: 22px }
+.looks-rail b { font-size: 14px; font-weight: 600; line-height: 1.2 }
+.looks-rail span:not(.look) { font-size: 12px; color: var(--ink-2); line-height: 1.25 }
+.looks-rail button:active { transform: scale(.97) }
+
+/* sign-up steps */
+.stepper { list-style: none; margin: 0 0 16px; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px }
+.stepper li { display: grid; justify-items: center; gap: 4px; font-size: 11px; color: var(--ink-3); position: relative }
+.stepper li::before { content: ""; position: absolute; top: 13px; left: calc(-50% + 16px); right: calc(50% + 16px); height: 2px; background: var(--hair) }
+.stepper li:first-child::before { display: none }
+.stepper li[data-state="done"]::before, .stepper li[data-state="now"]::before { background: var(--ink) }
+.stepper i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; background: var(--studio); color: var(--ink-3) }
+.stepper li[data-state="now"] { color: var(--ink); font-weight: 600 }
+.stepper li[data-state="now"] i { background: var(--signal); color: var(--ink) }
+.stepper li[data-state="done"] i { background: var(--ink); color: var(--paper) }
+.linkbtn.back { display: block; margin: 12px auto 0 }
+
+/* gallery: personal account */
+.cabinet { display: flex; align-items: center; gap: 12px; margin: 12px 20px 0; padding: 12px 14px; border-radius: 16px; background: var(--paper) }
+.cabinet .ava { width: 40px; height: 40px; border-radius: 50%; background: var(--signal); display: grid; place-items: center; font-weight: 800; flex: none }
+.cabinet > div { display: grid; flex: 1; min-width: 0 }
+.cabinet small { font-size: 12px; color: var(--ink-3) }
+.cabinet b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.cabinet .left { font-size: 12px; color: var(--ink-2); text-align: right; max-width: 45% }
+
+/* configurator: one page, numbered sections, every swatch named */
+.cfg-h { margin: 16px 0 10px; font-size: 15px; font-weight: 600 }
+.looks-rail.compact button { flex: 0 0 96px; padding: 10px; justify-items: center; text-align: center }
+.looks-rail.compact .look { width: 40px; height: 40px; margin-bottom: 6px }
+.looks-rail.compact .look::after { width: 18px; height: 18px }
+.looks-rail.compact b { font-size: 12px }
+.looks-rail button[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--ink) }
+.cfg .part { padding: 22px 20px 0 }
+.cfg .part h4 { display: flex; align-items: center; gap: 10px; justify-content: flex-start; font-size: 16px; margin: 0 0 12px }
+.cfg .part h4 em { margin-left: auto; font-style: normal; font-weight: 500; font-size: 14px; color: var(--ink-2) }
+.pn { width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none }
+.sw2 { display: grid; grid-template-columns: repeat(auto-fill, minmax(62px, 1fr)); gap: 12px 6px }
+.sw2 button { display: grid; justify-items: center; gap: 6px; font-size: 12px; color: var(--ink-2); min-width: 0 }
+.sw2 i { width: 46px; height: 46px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px var(--hair), inset 0 -8px 14px rgba(0, 0, 0, .16), inset 0 6px 10px rgba(255, 255, 255, .2); transition: box-shadow .15s }
+.sw2.wheels i { background: radial-gradient(circle, var(--studio) 0 18%, var(--c) 19% 62%, #2a2b29 63%) }
+.sw2 i[data-stock] { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--ink-3); position: relative }
+.sw2 i[data-stock]::after { content: ""; position: absolute; inset: 0; margin: auto; width: 60%; height: 1.5px; background: var(--ink-3); transform: rotate(-45deg) }
+.sw2.wheels i[data-stock] { background: var(--paper) }
+.sw2 span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100% }
+.sw2 button[aria-pressed="true"] i { box-shadow: inset 0 0 0 1px var(--hair), 0 0 0 3px var(--studio), 0 0 0 5px var(--ink) }
+.sw2 button[aria-pressed="true"] span { color: var(--ink); font-weight: 600 }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; margin-top: 14px; padding: 4px; border-radius: 14px; background: var(--paper) }
+.seg button { height: 40px; border-radius: 10px; font-size: 14px; font-weight: 500; color: var(--ink-2); display: flex; align-items: center; justify-content: center; gap: 8px }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper) }
+.cfg .part h4 + .seg { margin-top: 0 }
+.tints i { width: 18px; height: 14px; border-radius: 4px 7px 3px 3px; box-shadow: inset 0 0 0 1px var(--hair) }
+.tints i[data-t="clear"] { background: linear-gradient(135deg, #e9f2f7, #c9dbe5) }
+.tints i[data-t="light"] { background: linear-gradient(135deg, #8c99a1, #5e6a71) }
+.tints i[data-t="dark"] { background: linear-gradient(135deg, #2c3134, #111314) }
+
+/* first render: contacts in place of the options */
+.contacts { padding-top: 18px; padding-bottom: 24px }
+.contacts h3 { font-size: 22px; margin: 0 0 6px; letter-spacing: -.02em }
+.contacts .field input { background: var(--paper) }
+.stepper li[data-state="wait"] i { background: var(--signal); animation: pulse 1.2s ease-in-out infinite }
+@keyframes pulse { 50% { opacity: .45 } }
+.waiting { display: grid; gap: 4px; padding-top: 22px; text-align: center }
+.waiting b { font-size: 17px }
+.waiting span { color: var(--ink-2); font-size: 14px }
+.lockedres { position: relative; overflow: hidden }
+.lockedres img { display: block; width: 100%; max-height: 46dvh; object-fit: contain; filter: blur(14px) saturate(120%); transform: scale(1.08) }
+.lockedres p { position: absolute; inset: 0; margin: 0; display: grid; place-content: center; gap: 4px; text-align: center; padding: 16px; background: rgba(25, 26, 24, .25) }
+.lockedres b { font-size: 20px; color: var(--paper); text-shadow: 0 1px 8px rgba(0, 0, 0, .4) }
+.lockedres span { font-size: 14px; color: var(--paper); text-shadow: 0 1px 8px rgba(0, 0, 0, .4) }
+.barr { display: flex; align-items: center; gap: 2px; flex: none }
+.langsel { appearance: none; -webkit-appearance: none; border: 0; font: inherit; font-size: 13px; font-weight: 600; color: var(--ink); background: var(--paper) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23191a18' stroke-width='1.6'/%3E%3C/svg%3E") no-repeat right 10px center / 9px; height: 34px; padding: 0 26px 0 12px; border-radius: 17px; max-width: 120px }
+/* while the client fills in contacts the photo shrinks and scrolls away, so the form and its button fit */
+.screen.contacting .viewer { position: relative }
+.screen.contacting .vimg { min-height: 0 }
+.screen.contacting .vimg > img, .screen.contacting .lockedres img { max-height: 30dvh }
+.screen.contacting .vimg:has(.rendering) { min-height: 220px }
+.screen.contacting .rcard { padding: 12px 14px 10px; gap: 4px }
+.screen.contacting .rcard small { display: none }
+.screen.contacting .ring { width: 28px; height: 28px; margin: 0 }

@@ -46,10 +46,11 @@ export default {
 
     try {
       if (path === '/config' && request.method === 'GET') return json(await publicBrand(env, url.origin, url.searchParams.get('shop')))
+      if (path === '/start' && request.method === 'POST') return json(await startAnon(request, env))
       if (path === '/register' && request.method === 'POST') return json(await register(request, env))
       if (path === '/me' && request.method === 'GET') {
         const user = await userFrom(request, env)
-        return json({ left: left(env, user), name: user.name, shop: user.shop || 'main' })
+        return json({ left: left(env, user), name: user.name, shop: user.shop || 'main', anon: !!user.anon })
       }
       if (path === '/builds' && request.method === 'GET') {
         const user = await userFrom(request, env)
@@ -72,7 +73,7 @@ export default {
         const { subscription, lang } = await request.json()
         if (!subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) throw fail('bad subscription', 400)
         const subs = (await getJ(env, `usubs:${user.id}`, [])).filter((x) => x.endpoint !== subscription.endpoint)
-        await putJ(env, `usubs:${user.id}`, [{ ...subscription, lang: lang === 'ru' ? 'ru' : 'en' }, ...subs].slice(0, 5))
+        await putJ(env, `usubs:${user.id}`, [{ ...subscription, lang: ['ru', 'es'].includes(lang) ? lang : 'en' }, ...subs].slice(0, 5))
         return json({ ok: true })
       }
       if (path === '/generate' && request.method === 'POST') return json(await generate(request, env, url.origin))
@@ -146,12 +147,37 @@ async function register(request, env) {
   if (phone.replace(/\D/g, '').length < 10) throw fail('Укажите телефон полностью', 400)
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw fail('Проверьте email', 400)
 
+  // A render can start before the contacts are in (see /start); the contacts then complete that same client.
+  const anonId = (request.headers.get('X-User') || '').replace(/[^a-f0-9]/g, '')
+  const anon = anonId ? await getJ(env, `user:${anonId}`, null) : null
+  const draft = anon?.anon ? anon : null
+
   // Same phone or same email = same client (no second set of free renders).
   const [byPhone, byEmail] = await Promise.all([env.DB.get(`ix:p:${await sha(phone)}`), env.DB.get(`ix:e:${await sha(email)}`)])
   const existing = byPhone || byEmail
   if (existing) {
     const user = await getJ(env, `user:${existing}`, null)
-    if (user) return { token: user.id, left: left(env, user, shop) }
+    if (user) {
+      if (draft && draft.id !== user.id) {
+        // Fold the renders made before sign-up into the existing account, so the limit stays shared.
+        user.used += draft.used
+        user.builds = [...(draft.builds || []), ...(user.builds || [])]
+        if (draft.pending) user.pending = draft.pending
+        if (!user.name && name) user.name = name
+        await saveUser(env, user)
+        await env.DB.put(`alias:${draft.id}`, user.id, { expirationTtl: 30 * DAY })
+        await env.DB.delete(`user:${draft.id}`)
+      }
+      return { token: user.id, left: left(env, user, shop), name: user.name || name, returning: true }
+    }
+  }
+
+  if (draft) {
+    Object.assign(draft, { anon: false, name, phone, email, createdAt: Date.now() })
+    await saveUser(env, draft)
+    await Promise.all([env.DB.put(`ix:p:${await sha(phone)}`, draft.id), env.DB.put(`ix:e:${await sha(email)}`, draft.id)])
+    await pushAll(env, { title: draft.shopName ? `Новый клиент · ${draft.shopName}` : 'Новый клиент', body: `${name || 'Без имени'} · ${phone} · ${email}`, tag: `reg-${draft.id}`, url: `${env.ADMIN_URL || 'https://appshalamov.github.io/ai-car-studio/admin.html'}#client=${draft.id}` })
+    return { token: draft.id, left: left(env, draft, shop), name }
   }
 
   const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
@@ -165,19 +191,40 @@ async function register(request, env) {
   await saveUser(env, user)
   await Promise.all([env.DB.put(`ix:p:${await sha(phone)}`, id), env.DB.put(`ix:e:${await sha(email)}`, id)])
   await pushAll(env, { title: shop.name ? `Новый клиент · ${shop.name}` : 'Новый клиент', body: `${name || 'Без имени'} · ${phone} · ${email}`, tag: `reg-${id}`, url: `${env.ADMIN_URL || 'https://appshalamov.github.io/ai-car-studio/admin.html'}#client=${id}` })
-  return { token: id, left: left(env, user, shop) }
+  return { token: id, left: left(env, user, shop), name }
 }
 
 const left = (env, user, brand) => Math.max(0, (user.free ?? brand?.free ?? parseInt(env.FREE_GENERATIONS || '3', 10)) - user.used)
 
+async function currentUser(env, user) {
+  const to = (await env.DB.get(`alias:${user.id}`)) || user.id
+  return (await getJ(env, `user:${to}`, null)) || user
+}
+
+/** A client who started a render before leaving contacts. Same per-device daily cap as sign-ups. */
+async function startAnon(request, env) {
+  const body = await request.json().catch(() => ({}))
+  const shop = await getShop(env, body.shop)
+  const ip = request.headers.get('CF-Connecting-IP') || 'unknown'
+  const key = `lim:start:${today()}:${ip}`
+  const n = parseInt((await env.DB.get(key)) || '0', 10)
+  if (n >= 5) throw fail('Слишком много новых сессий с этого устройства сегодня', 429)
+  await env.DB.put(key, String(n + 1), { expirationTtl: 2 * DAY })
+  const id = crypto.randomUUID().replace(/-/g, '')
+  const user = { id, anon: true, name: '', phone: '', email: '', createdAt: Date.now(), used: 0, free: shop.free, shop: shop.id, shopName: shop.name }
+  await saveUser(env, user)
+  return { token: id, left: left(env, user, shop) }
+}
+
 async function saveUser(env, u) {
   // Metadata lets the admin list clients without reading every record.
-  await putJ(env, `user:${u.id}`, u, { metadata: { name: u.name, phone: u.phone, email: u.email, createdAt: u.createdAt, used: u.used, free: u.free, shop: u.shop || 'main', shopName: u.shopName || '' } })
+  await putJ(env, `user:${u.id}`, u, { metadata: { name: u.name, phone: u.phone, email: u.email, createdAt: u.createdAt, used: u.used, free: u.free, shop: u.shop || 'main', shopName: u.shopName || '', anon: !!u.anon } })
 }
 
 async function userFrom(request, env) {
   const id = (request.headers.get('X-User') || '').replace(/[^a-f0-9]/g, '')
-  const user = id && (await getJ(env, `user:${id}`, null))
+  let user = id && (await getJ(env, `user:${id}`, null))
+  if (!user && id) { const to = await env.DB.get(`alias:${id}`); if (to) user = await getJ(env, `user:${to}`, null) }
   if (!user) throw fail('Нужна регистрация', 401)
   return user
 }
@@ -185,7 +232,7 @@ async function userFrom(request, env) {
 // ---------- generation ----------
 
 async function generate(request, env, origin) {
-  const user = await userFrom(request, env)
+  let user = await userFrom(request, env)
   const brand = await getBrand(env)
   if (left(env, user, brand) <= 0) throw fail('Бесплатные сборки закончились', 402)
 
@@ -242,11 +289,13 @@ async function generate(request, env, origin) {
     await putJ(env, 'stats', stats)
     await pushAll(env, {
       title: user.shopName ? `Новая генерация · ${user.shopName}` : 'Новая генерация',
-      body: `${user.name || user.phone}${log.label ? ` · ${log.label}` : ''}: себестоимость ${fmt(charged, rate)}${after != null ? ` · баланс woso ${after.toFixed(2)} кр.` : ''}`,
+      body: `${user.anon ? 'Без контактов (пока)' : user.name || user.phone}${log.label ? ` · ${log.label}` : ''}: себестоимость ${fmt(charged, rate)}${after != null ? ` · баланс woso ${after.toFixed(2)} кр.` : ''}`,
       tag: `gen-${log.at}`,
       url: `${env.ADMIN_URL || 'https://appshalamov.github.io/ai-car-studio/admin.html'}#client=${user.id}`,
     })
     const image = await inlineImage(imageUrl(res))
+    // The client may have left contacts (or matched an existing account) while this ran: continue on the current record.
+    user = await currentUser(env, user)
     // Keep the build on the server so the client's installed app shows it too.
     try { await saveBuild(env, user, images[0], image, String(title || label || '').slice(0, 80)) } catch { /* the client still gets the image */ }
     delete user.pending
@@ -256,13 +305,16 @@ async function generate(request, env, origin) {
       title: shop.name || 'Auto Studio',
       body: lang === 'ru'
         ? `${user.name ? user.name + ', в' : 'В'}аша сборка готова. Откройте, чтобы сравнить с фото.`
-        : `${user.name ? user.name + ', y' : 'Y'}our build is ready. Open it to compare with your photo.`,
+        : lang === 'es'
+          ? `${user.name ? user.name + ', t' : 'T'}u versión está lista. Ábrela para compararla con tu foto.`
+          : `${user.name ? user.name + ', y' : 'Y'}our build is ready. Open it to compare with your photo.`,
       tag: 'build-ready',
       icon: shop.logoKey ? `${origin}/logo?shop=${shop.id}&v=${encodeURIComponent(shop.logoKey)}` : undefined,
       url: `${appUrl(env)}?s=${shop.id}&u=${user.id}&tab=gal`,
     })).catch(() => 0)
     return { image, left: left(env, user, brand) }
   } catch (e) {
+    user = await currentUser(env, user)
     user.used = Math.max(0, user.used - 1) // failed render is not counted
     delete user.pending
     await saveUser(env, user)

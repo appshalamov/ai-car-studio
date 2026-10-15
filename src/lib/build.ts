@@ -1,16 +1,16 @@
 export type Sel = { paint: string; finish: string; wheels: string; stance: string; tint: string }
-export type Style = { id: string; en: [string, string]; ru: [string, string]; set: Sel; extra?: string }
+export type Style = { id: string; en: [string, string]; ru: [string, string]; es: [string, string]; set: Sel; extra?: string }
 
 export const DEF: Sel = { paint: 'stock', finish: 'stock', wheels: 'stock', stance: 'stock', tint: 'clear' }
 
 // Ready looks: a new color and new wheels, the two things clients most often ask a shop for.
 export const STYLES: Style[] = [
-  { id: 'rosso', en: ['Rosso red', 'Gloss red, black wheels'], ru: ['Красный Rosso', 'Красный глянец, чёрные диски'], set: { paint: 'red', finish: 'gloss', wheels: 'black', stance: 'stock', tint: 'clear' } },
-  { id: 'blackout', en: ['Blackout', 'Matte black, black wheels, tint'], ru: ['Блэкаут', 'Чёрный мат, чёрные диски, тонировка'], set: { paint: 'black', finish: 'matte', wheels: 'black', stance: 'lowered', tint: 'dark' }, extra: 'blacked-out trim, badges and grille' },
-  { id: 'nardo', en: ['Nardo grey', 'Satin grey, bronze wheels'], ru: ['Серый Nardo', 'Серый сатин, бронзовые диски'], set: { paint: 'grey', finish: 'satin', wheels: 'bronze', stance: 'lowered', tint: 'light' } },
-  { id: 'heritage', en: ['British green', 'Deep green, gold wheels'], ru: ['Британский зелёный', 'Тёмно-зелёный, золотые диски'], set: { paint: 'green', finish: 'gloss', wheels: 'gold', stance: 'stock', tint: 'clear' } },
-  { id: 'oem', en: ['Pearl white', 'White, graphite wheels'], ru: ['Белый перламутр', 'Белый, диски графит'], set: { paint: 'white', finish: 'gloss', wheels: 'graphite', stance: 'lowered', tint: 'light' } },
-  { id: 'street', en: ['Wheels only', 'Black wheels, lower, tint'], ru: ['Только диски', 'Чёрные диски, ниже, тонировка'], set: { paint: 'stock', finish: 'stock', wheels: 'black', stance: 'lowered', tint: 'dark' } },
+  { id: 'rosso', en: ['Rosso red', 'Gloss red, black wheels'], ru: ['Красный Rosso', 'Красный глянец, чёрные диски'], es: ['Rojo Rosso', 'Rojo brillante, rines negros'], set: { paint: 'red', finish: 'gloss', wheels: 'black', stance: 'stock', tint: 'clear' } },
+  { id: 'blackout', en: ['Blackout', 'Matte black, black wheels, tint'], ru: ['Блэкаут', 'Чёрный мат, чёрные диски, тонировка'], es: ['Blackout', 'Negro mate, rines negros, polarizado'], set: { paint: 'black', finish: 'matte', wheels: 'black', stance: 'lowered', tint: 'dark' }, extra: 'blacked-out trim, badges and grille' },
+  { id: 'nardo', en: ['Nardo grey', 'Satin grey, bronze wheels'], ru: ['Серый Nardo', 'Серый сатин, бронзовые диски'], es: ['Gris Nardo', 'Gris satinado, rines bronce'], set: { paint: 'grey', finish: 'satin', wheels: 'bronze', stance: 'lowered', tint: 'light' } },
+  { id: 'heritage', en: ['British green', 'Deep green, gold wheels'], ru: ['Британский зелёный', 'Тёмно-зелёный, золотые диски'], es: ['Verde británico', 'Verde profundo, rines dorados'], set: { paint: 'green', finish: 'gloss', wheels: 'gold', stance: 'stock', tint: 'clear' } },
+  { id: 'oem', en: ['Pearl white', 'White, graphite wheels'], ru: ['Белый перламутр', 'Белый, диски графит'], es: ['Blanco perla', 'Blanco, rines grafito'], set: { paint: 'white', finish: 'gloss', wheels: 'graphite', stance: 'lowered', tint: 'light' } },
+  { id: 'street', en: ['Wheels only', 'Black wheels, lower, tint'], ru: ['Только диски', 'Чёрные диски, ниже, тонировка'], es: ['Solo rines', 'Rines negros, más bajo, polarizado'], set: { paint: 'stock', finish: 'stock', wheels: 'black', stance: 'lowered', tint: 'dark' } },
 ]
 
 type Part = { k: keyof Sel; type: 'sw' | 'opt'; opts: [string, string?][] }
@@ -47,7 +47,7 @@ export function buildPrompt(s: Sel, style?: Style | null) {
 }
 
 /** Human summary of a build, e.g. "Blackout" or "Red gloss, black wheels, lowered". */
-export function summary(s: Sel, o: Record<string, string>, labels: { wheels: string; tint: string }, style?: Style | null, lang: 'en' | 'ru' = 'en') {
+export function summary(s: Sel, o: Record<string, string>, labels: { wheels: string; tint: string }, style?: Style | null, lang: 'en' | 'ru' | 'es' = 'en') {
   if (style) return style[lang][0]
   const parts: string[] = []
   if (s.paint !== 'stock') parts.push(`${o[s.paint]}${s.finish !== 'stock' ? ' ' + o[s.finish].toLowerCase() : ''}`)

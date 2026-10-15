@@ -1,17 +1,18 @@
 import { useT } from '../lib/i18n'
-import type { Build } from '../lib/api'
-import type { Car } from '../lib/cars'
+import type { Build, Me } from '../lib/api'
+import { mods, type Car } from '../lib/cars'
 import { IBell } from '../components/Icons'
 
 export type GalleryItem = Build & { example?: boolean }
 
 /** Real before/after pairs shown until the client has builds of their own. */
-export const examples = (cars: Car[], lang: 'en' | 'ru'): GalleryItem[] =>
-  cars.map((c, i) => ({ id: 'ex-' + c.slug, at: -i, label: `${c.model} · ${lang === 'ru' ? c.mods_ru : c.mods_en}`, before: c.before, after: c.after, example: true }))
+export const examples = (cars: Car[], lang: string): GalleryItem[] =>
+  cars.map((c, i) => ({ id: 'ex-' + c.slug, at: -i, label: `${c.model} · ${mods(c, lang)}`, before: c.before, after: c.after, example: true }))
 
 type Props = {
   active: boolean
   items: GalleryItem[]
+  client: Me | null
   pending: boolean
   /** Shown in the installed app until the client allows "build is ready" pushes. */
   askPush: boolean
@@ -21,14 +22,21 @@ type Props = {
   onOpen: (b: GalleryItem) => void
 }
 
-export function Gallery({ active, items, pending, askPush, installBanner, onPush, onInstall, onOpen }: Props) {
+export function Gallery({ active, items, client, pending, askPush, installBanner, onPush, onInstall, onOpen }: Props) {
   const { t, lang } = useT()
-  const fmt = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', day: 'numeric' })
+  const fmt = new Intl.DateTimeFormat(lang === 'ru' ? 'ru-RU' : lang === 'es' ? 'es-US' : 'en-US', { month: 'short', day: 'numeric' })
   const today = new Date().toDateString()
   const mine = items.filter((b) => !b.example).length
   return (
     <section className="screen" hidden={!active} aria-label={t.tGal}>
       <div className="g-head"><h1 className="t-title">{t.galT}</h1><span>{mine ? t.builds(mine) : ''}</span></div>
+      {client && (
+        <div className="cabinet">
+          <span className="ava">{(client.name || '•').trim().charAt(0).toUpperCase()}</span>
+          <div><small>{t.cabinet}</small><b>{client.name || t.cabinet}</b></div>
+          <span className="left">{t.cabinetP(client.left)}</span>
+        </div>
+      )}
       {installBanner && (
         <button className="banner" onClick={onInstall}><span>{t.inst.banner}</span><b>{t.inst.go}</b></button>
       )}
