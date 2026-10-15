@@ -10,7 +10,7 @@ import worker from '../worker/woso-proxy.js'
 const kv = new Map()
 const r2 = new Map()
 const env = {
-  WOSO_TOKEN: 'fake', ADMIN_PASSWORD: 'test-admin-pass', USD_PER_CREDIT: '0.15', FREE_GENERATIONS: '3', TOTAL_DAILY_LIMIT: '500',
+  WOSO_TOKEN: 'fake', APP_URL: 'http://localhost:4173/', ADMIN_PASSWORD: 'test-admin-pass', USD_PER_CREDIT: '0.15', FREE_GENERATIONS: '3', TOTAL_DAILY_LIMIT: '500',
   DB: {
     get: async (k) => kv.get(k)?.v ?? null,
     put: async (k, v, o) => void kv.set(k, { v: String(v), metadata: o?.metadata }),

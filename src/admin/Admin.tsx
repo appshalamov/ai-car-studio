@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminSaveBrand, adminSaveLogo, adminSubscribe, adminSummary, adminTestPush, refreshBrand, shopName, type ApiError, type Brand, type Client, type GenLog, type Summary } from '../lib/api'
+import { useCallback, useEffect, useState } from 'react'
+import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminShops, adminSubscribe, adminSummary, adminTestPush, b64uToBytes, shopName, type ApiError, type Brand, type Client, type GenLog, type Shop, type Summary } from '../lib/api'
 import { loadImage } from '../lib/image'
 import { BrandMark } from '../components/BrandMark'
+import { Shops } from './Shops'
 
-type Data = { summary: Summary; clients: Client[]; renders: GenLog[]; brand: Brand }
+type Data = { summary: Summary; clients: Client[]; renders: GenLog[]; shops: Shop[]; brand: Brand }
 
 const L = {
   en: {
@@ -43,11 +44,6 @@ const fmtPhone = (p = '') => {
   return m ? `(${m[1]}) ${m[2]}-${m[3]}` : p
 }
 
-const b64uToBytes = (s: string) => {
-  const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (s.length % 4)) % 4))
-  return Uint8Array.from(b, (c) => c.charCodeAt(0))
-}
-
 async function squareLogo(file: File): Promise<string> {
   const src = await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = () => rej(fr.error); fr.readAsDataURL(file) })
   const img = await loadImage(src)
@@ -68,9 +64,6 @@ export default function Admin() {
   const [passInput, setPassInput] = useState('')
   const [data, setData] = useState<Data | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<{ name: string; phone: string; free: number } | null>(null)
-  const [logo, setLogo] = useState<string | null | undefined>(undefined) // undefined = unchanged
-  const [saving, setSaving] = useState<'idle' | 'busy' | 'done'>('idle')
   const [pushMsg, setPushMsg] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusFromHash)
 
@@ -82,9 +75,8 @@ export default function Admin() {
   const load = useCallback(async () => {
     if (!adminPass()) return
     try {
-      const [summary, clients, renders, brand] = await Promise.all([adminSummary(), adminClients(), adminGenerations(), refreshBrand()])
-      setData({ summary, clients, renders, brand })
-      setForm((f) => f ?? { name: brand.name, phone: brand.phone, free: brand.free })
+      const [summary, clients, renders, shops] = await Promise.all([adminSummary(), adminClients(), adminGenerations(), adminShops()])
+      setData({ summary, clients, renders, shops, brand: shops.find((x) => x.id === 'main') ?? shops[0] })
       setError(null)
     } catch (e) {
       onFail(e as ApiError)
@@ -105,8 +97,6 @@ export default function Admin() {
   useEffect(() => { document.documentElement.lang = lang; ls.set('cs-admin-lang', lang) }, [lang])
   useEffect(() => { if (focus && data) document.getElementById('c-' + focus)?.scrollIntoView({ block: 'center' }) }, [focus, data])
 
-  const preview: Brand | null = useMemo(() => data && form && { ...data.brand, ...form, logo: logo === undefined ? data.brand.logo : logo }, [data, form, logo])
-
   const enablePush = async () => {
     setPushMsg(null)
     try {
@@ -125,22 +115,6 @@ export default function Admin() {
       setPushMsg(t.testSent(r.sent ?? 0))
     } catch (e) {
       setPushMsg((e as Error).message)
-    }
-  }
-
-  const saveBrand = async () => {
-    if (!form) return
-    setSaving('busy')
-    try {
-      let b = await adminSaveBrand(form)
-      if (logo !== undefined) b = await adminSaveLogo(logo)
-      setData((d) => d && { ...d, brand: b })
-      setLogo(undefined)
-      setSaving('done')
-      setTimeout(() => setSaving('idle'), 2000)
-    } catch (e) {
-      onFail(e as ApiError)
-      setSaving('idle')
     }
   }
 
@@ -188,6 +162,8 @@ export default function Admin() {
             <div className="tile"><span>{t.balance}</span><b>{s.balance != null ? s.balance.toFixed(2) : '—'}</b><small>{s.price != null ? t.perRender(cr(s.price), usd(s.price * s.usdPerCredit)) : ''}</small></div>
           </section>
 
+          <Shops lang={lang} shops={data.shops} clients={data.clients} squareLogo={squareLogo} onChanged={load} onFail={onFail} />
+
           <div className="cols">
             <section className="card">
               <h2>{t.pushT}</h2>
@@ -197,33 +173,6 @@ export default function Admin() {
               {/iPhone|iPad/.test(navigator.userAgent) && !matchMedia('(display-mode: standalone)').matches && <p className="muted small">{t.pushIos}</p>}
             </section>
 
-            <section className="card">
-              <h2>{t.brandT}</h2>
-              <p className="muted">{t.brandP}</p>
-              {form && (
-                <>
-                  <label className="fld"><span>{t.name}</span><input value={form.name} maxLength={60} placeholder={t.namePh} onChange={(e) => setForm({ ...form, name: e.target.value })} /></label>
-                  <label className="fld"><span>{t.phone}</span><input type="tel" value={form.phone} maxLength={30} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(555) 123-4567" /></label>
-                  <label className="fld"><span>{t.free}</span><input type="number" min={0} max={100} value={form.free} onChange={(e) => setForm({ ...form, free: Math.max(0, Math.min(100, parseInt(e.target.value, 10) || 0)) })} /></label>
-                  <div className="fld"><span>{t.logo}</span>
-                    <div className="logo-row">
-                      {preview && <BrandMark brand={preview} size={64} />}
-                      <div>
-                        <label className="btn">{t.upload}<input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) setLogo(await squareLogo(f)) }} /></label>
-                        {preview?.logo && <button className="lnk" onClick={() => setLogo(null)}>{t.remove}</button>}
-                        <small className="muted">{t.logoP}</small>
-                      </div>
-                    </div>
-                  </div>
-                  {preview && (
-                    <div className="preview"><small className="muted">{t.preview}</small>
-                      <div className="pbar"><BrandMark brand={preview} size={32} /><b>{shopName(preview)}</b></div>
-                    </div>
-                  )}
-                  <button className="btn y" onClick={saveBrand} disabled={saving === 'busy'}>{saving === 'done' ? t.saved : t.save}</button>
-                </>
-              )}
-            </section>
           </div>
 
           <section className="card">
@@ -234,6 +183,7 @@ export default function Admin() {
                 <li key={c.id} id={'c-' + c.id} className={focus === c.id ? 'hl' : ''}>
                   <div className="main">
                     <b>{c.name || '—'}</b>
+                    {c.shop && c.shop !== 'main' && <span className="chip">{c.shopName || c.shop}</span>}
                     <a href={`tel:${c.phone}`}>{fmtPhone(c.phone)}</a>
                     <a href={`mailto:${c.email}`}>{c.email}</a>
                   </div>
@@ -252,7 +202,7 @@ export default function Admin() {
             <ul className="list">
               {data.renders.map((g) => (
                 <li key={`${g.at}-${g.userId}`}>
-                  <div className="main"><b>{g.label || t.custom}</b><span>{g.name || fmtPhone(g.phone)}</span></div>
+                  <div className="main"><b>{g.label || t.custom}</b><span>{g.name || fmtPhone(g.phone)}</span>{g.shop && g.shop !== 'main' && <span className="chip">{g.shopName || g.shop}</span>}</div>
                   <div className="meta">
                     <span>{fmtTime(g.at)}</span>
                     {g.ok ? <><span className="cost">{usd(g.usd)}</span><span>{cr(g.credits)} · {g.model}</span></> : <span className="err" title={g.error}>{t.failed}</span>}

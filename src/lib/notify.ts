@@ -9,7 +9,7 @@ export async function askNotifyPermission(): Promise<boolean> {
 export async function notify(title: string, body: string, icon = './pwa-192x192.png') {
   if (!('Notification' in window) || Notification.permission !== 'granted') return
   if (document.visibilityState === 'visible') return // the screen already shows it
-  const opts = { body, icon, badge: './pwa-192x192.png', tag: 'cs-ready' }
+  const opts = { body, icon, badge: './pwa-192x192.png', tag: 'build-ready' }
   try {
     const reg = await navigator.serviceWorker?.getRegistration()
     if (reg) return void (await reg.showNotification(title, opts))

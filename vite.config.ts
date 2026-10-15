@@ -17,9 +17,9 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'img/*.jpg'],
       manifest: {
-        name: 'Car Studio',
-        short_name: 'Car Studio',
-        description: 'See your car tuned before you buy a single part.',
+        name: 'Auto Studio',
+        short_name: 'Auto Studio',
+        description: 'See your car in a new color and on new wheels before you buy.',
         theme_color: '#e6e3de',
         background_color: '#e6e3de',
         display: 'standalone',
@@ -36,6 +36,7 @@ export default defineConfig({
       },
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,webmanifest}'],
+        globIgnores: ['img/cars/**'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
     }),

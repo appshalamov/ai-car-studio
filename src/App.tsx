@@ -1,32 +1,42 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LangCtx, T, initialLang, useT, type Lang } from './lib/i18n'
-import { cachedBrand, forgetMe, generate, getMe, refreshBrand, refreshMe, register, shopName, type ApiError, type Brand, type Me } from './lib/api'
-import { deleteBuild, listBuilds } from './lib/db'
-import { STYLES } from './lib/build'
-import { shareDataUrl } from './lib/image'
+import { cachedBrand, deleteBuild, forgetMe, generate, getMe, myBuilds, readLaunchParams, refreshBrand, refreshMe, register, shopName, subscribeMe, syncInstallMeta, type ApiError, type Brand, type Me } from './lib/api'
+import { useCars } from './lib/cars'
+import { shareUrl } from './lib/image'
 import { askNotifyPermission, notify } from './lib/notify'
 import { Home } from './screens/Home'
-import { Tune } from './screens/Tune'
-import { EXAMPLES, Gallery, type GalleryItem } from './screens/Gallery'
+import { Tune, type TuneRequest } from './screens/Tune'
+import { Gallery, examples, type GalleryItem } from './screens/Gallery'
 import { Sheet } from './components/Sheet'
 import { BeforeAfter } from './components/BeforeAfter'
 import { BrandMark } from './components/BrandMark'
+import { Install, installLater, isPhone, isStandalone } from './components/Install'
 import { IGallery, IHome, IPhone, ITune } from './components/Icons'
 
 type Tab = 'home' | 'tune' | 'gal'
-type Pending = { photo: string; prompt: string; label: string; resolve: (img: string | null) => void }
+type Pending = { photo: string; prompt: string; label: string; title: string; resolve: (img: string | null) => void }
+
+// Read ?s=<shop>&u=<client> before anything else: the installed app opens with them.
+const launch = readLaunchParams()
+const startTab: Tab = new URLSearchParams(location.search).get('tab') === 'gal' || (launch.fromInstall && isStandalone()) ? 'gal' : 'home'
+const pushPerm = () => ('Notification' in window ? Notification.permission : 'denied')
 
 export default function App() {
   const [lang, setLangState] = useState<Lang>(initialLang)
   const t = T[lang]
   const setLang = (l: Lang) => { setLangState(l); try { localStorage.setItem('cs-lang', l) } catch { /* private mode */ } }
 
+  const cars = useCars()
   const [brand, setBrand] = useState<Brand>(cachedBrand)
   const [client, setClient] = useState<Me | null>(getMe)
-  const [tab, setTab] = useState<Tab>('home')
-  const [incoming, setIncoming] = useState<{ style?: string | null; sample?: boolean; file?: File; n: number } | null>(null)
+  const [tab, setTab] = useState<Tab>(startTab)
+  const [incoming, setIncoming] = useState<TuneRequest | null>(null)
   const [builds, setBuilds] = useState<GalleryItem[]>([])
-  const [sheet, setSheet] = useState<null | 'settings' | 'signup' | 'out' | 'item'>(null)
+  const [rendering, setRendering] = useState(false)
+  const [serverPending, setServerPending] = useState(false)
+  const [perm, setPerm] = useState(pushPerm)
+  const [sheet, setSheet] = useState<null | 'settings' | 'signup' | 'out' | 'item' | 'install'>(null)
+  const [firstInstall, setFirstInstall] = useState(false)
   const [item, setItem] = useState<GalleryItem | null>(null)
   const [confirmDel, setConfirmDel] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
@@ -40,12 +50,30 @@ export default function App() {
     toastT.current = setTimeout(() => setToastMsg(null), 2600)
   }, [])
 
-  const loadBuilds = useCallback(() => { listBuilds().then((b) => setBuilds(b)) }, [])
+  const loadBuilds = useCallback(() => {
+    myBuilds().then((r) => { setBuilds(r.builds); setServerPending(r.pending) }).catch((e: ApiError) => { if (e.status === 401) { forgetMe(); setClient(null) } })
+  }, [])
 
   useEffect(() => {
-    refreshBrand().then(setBrand).catch(() => {})
+    refreshBrand().then((b) => { setBrand(b); syncInstallMeta(b) }).catch(() => {})
     refreshMe().then((m) => m && setClient(m)).catch((e: ApiError) => { if (e.status === 401) { forgetMe(); setClient(null) } })
     loadBuilds()
+    const u = new URL(location.href)
+    if (u.searchParams.has('tab')) { u.searchParams.delete('tab'); history.replaceState(null, '', u) }
+  }, [loadBuilds])
+
+  // A render started elsewhere (Safari before the app was installed) is still running: check back until it lands.
+  useEffect(() => {
+    if (!serverPending || rendering) return
+    const id = setInterval(loadBuilds, 6000)
+    return () => clearInterval(id)
+  }, [serverPending, rendering, loadBuilds])
+
+  // The installed app refreshes when it comes back to the screen (for example from a push).
+  useEffect(() => {
+    const on = () => { if (document.visibilityState === 'visible') { loadBuilds(); setPerm(pushPerm()) } }
+    document.addEventListener('visibilitychange', on)
+    return () => document.removeEventListener('visibilitychange', on)
   }, [loadBuilds])
 
   useEffect(() => { document.title = shopName(brand); document.documentElement.lang = lang }, [brand, lang])
@@ -53,12 +81,20 @@ export default function App() {
 
   const freeLeft = client ? client.left : brand.free
 
+  const enablePush = async () => {
+    const ok = await askNotifyPermission()
+    setPerm(pushPerm())
+    if (ok) subscribeMe(brand, lang).then((done) => done && toast(t.pushOn)).catch(() => {})
+  }
+
   /** Runs one render for a signed-up client. Returns the image, or null when it did not happen. */
   const doRender = async (c: Me, p: Omit<Pending, 'resolve'>): Promise<string | null> => {
     if (c.left <= 0) { setSheet('out'); return null }
-    askNotifyPermission().catch(() => {}) // still inside the tap that started the render
+    // Still inside the tap that started the render, so iPhone allows the permission prompt.
+    askNotifyPermission().then((ok) => { setPerm(pushPerm()); if (ok) subscribeMe(brand, lang).catch(() => {}) }).catch(() => {})
+    setRendering(true)
     try {
-      const r = await generate({ prompt: p.prompt, images: [p.photo], label: p.label })
+      const r = await generate({ prompt: p.prompt, images: [p.photo], label: p.label, title: p.title })
       setClient({ ...c, left: r.left })
       notify(t.readyT, t.readyP, brand.logo ?? undefined)
       return r.image
@@ -68,13 +104,16 @@ export default function App() {
       if (err.status === 402) { setClient({ ...c, left: 0 }); setSheet('out'); return null }
       toast(!err.status ? t.offline : err.status === 429 ? t.busyT : t.err)
       return null
+    } finally {
+      setRendering(false)
+      loadBuilds()
     }
   }
 
-  const requestRender = (photo: string, prompt: string, label: string) => {
-    if (client) return doRender(client, { photo, prompt, label })
+  const requestRender = (photo: string, prompt: string, label: string, title: string) => {
+    if (client) return doRender(client, { photo, prompt, label, title })
     return new Promise<string | null>((resolve) => {
-      pending.current = { photo, prompt, label, resolve }
+      pending.current = { photo, prompt, label, title, resolve }
       setSheet('signup')
     })
   }
@@ -85,20 +124,31 @@ export default function App() {
     setConfirmDel(false)
   }
 
-  const openTune = (req: Omit<NonNullable<typeof incoming>, 'n'>) => {
+  const openTune = (req: Omit<TuneRequest, 'n'>) => {
     setIncoming({ ...req, n: Date.now() })
     setTab('tune')
   }
 
-  const gallery = builds.length ? builds : EXAMPLES
+  const standalone = isStandalone()
+  const gallery = builds.length ? builds : examples(cars, lang)
+  const showInstall = (first: boolean) => { setFirstInstall(first); setSheet('install') }
 
   return (
     <LangCtx.Provider value={{ lang, t, setLang }}>
       <div className="app">
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) openTune({ file: f }) }} />
-        {tab === 'home' && <Home brand={brand} freeLeft={freeLeft} onUpload={() => fileRef.current?.click()} onStyle={(id) => openTune({ style: id, sample: true })} onSettings={() => setSheet('settings')} />}
-        <Tune active={tab === 'tune'} incoming={incoming} freeLeft={client ? client.left : null} render={requestRender} toast={toast} onSaved={loadBuilds} />
-        <Gallery active={tab === 'gal'} items={gallery} onOpen={(b) => { setItem(b); setConfirmDel(false); setSheet('item') }} />
+        {tab === 'home' && <Home brand={brand} cars={cars} freeLeft={freeLeft} onUpload={() => fileRef.current?.click()} onSettings={() => setSheet('settings')} />}
+        <Tune active={tab === 'tune'} brand={brand} cars={cars} incoming={incoming} freeLeft={client ? client.left : null} render={requestRender} toast={toast} />
+        <Gallery
+          active={tab === 'gal'}
+          items={gallery}
+          pending={rendering || serverPending}
+          askPush={!!client && standalone && perm === 'default' && !!brand.vapidPublic}
+          installBanner={!!client && !standalone && isPhone()}
+          onPush={enablePush}
+          onInstall={() => showInstall(false)}
+          onOpen={(b) => { setItem(b); setConfirmDel(false); setSheet('item') }}
+        />
 
         <nav className="tabbar">
           <button onClick={() => setTab('home')} aria-current={tab === 'home' ? 'page' : undefined}><IHome /><span>{t.tHome}</span><i className="dot" /></button>
@@ -120,19 +170,31 @@ export default function App() {
               <button className="linkbtn" onClick={() => { forgetMe(); setClient(null) }}>{t.signOut}</button>
             </div>
           )}
+          {!standalone && (
+            <div className="field"><label>{t.inst.title(shopName(brand))}</label>
+              <button className="cta2" onClick={() => showInstall(false)}>{t.inst.go}</button>
+            </div>
+          )}
           <div className="field"><small>{t.privacy}</small></div>
           <button className="cta" style={{ marginTop: 22 }} onClick={closeSheet}>{t.done}</button>
         </Sheet>
 
         <Sheet open={sheet === 'signup'} onClose={closeSheet} label={t.signT}>
-          <SignUp brand={brand} onDone={async (c, returning) => {
+          <SignUp brand={brand} onDone={(c, returning) => {
             setClient(c)
+            syncInstallMeta(brand)
             if (returning) toast(t.welcomeBack)
             const p = pending.current
             pending.current = null
-            setSheet(null)
-            if (p) p.resolve(await doRender(c, p))
+            // The render starts right away; the install pop-up covers the wait, before the result.
+            if (!standalone && !installLater()) showInstall(!returning)
+            else setSheet(null)
+            if (p) doRender(c, p).then(p.resolve)
           }} />
+        </Sheet>
+
+        <Sheet open={sheet === 'install'} onClose={closeSheet} label={t.inst.title(shopName(brand))}>
+          <Install brand={brand} first={firstInstall} onClose={closeSheet} />
         </Sheet>
 
         <Sheet open={sheet === 'out'} onClose={closeSheet} label={t.outT}>
@@ -148,11 +210,13 @@ export default function App() {
         <Sheet open={sheet === 'item'} onClose={closeSheet} label={t.galT}>
           {item && (
             <>
-              <h3>{(item.style ? STYLES.find((s) => s.id === item.style)?.[lang][0] : null) ?? item.label}</h3>
-              <BeforeAfter key={item.id} before={item.before} after={item.after} labels={[t.before, t.after]} fit="contain" />
+              <h3>{item.label || t.custom}</h3>
+              {item.before
+                ? <BeforeAfter key={item.id} before={item.before} after={item.after} labels={[t.before, t.after]} />
+                : <img className="item-img" src={item.after} alt="" />}
               <div className="row2">
-                <button className="cta" onClick={() => shareDataUrl(item.after, 'my-build.jpg', item.label).catch(() => toast(t.err))} disabled={item.example}>{t.share}</button>
-                <button className="cta2" onClick={() => { closeSheet(); openTune({ style: item.style, sample: true }) }}>{t.again}</button>
+                <button className="cta" onClick={() => shareUrl(item.after, 'my-build.jpg', item.label).catch(() => toast(t.err))}>{t.savePhotos}</button>
+                <button className="cta2" onClick={() => { closeSheet(); openTune(item.example ? { sample: true, url: item.before ?? undefined } : { url: item.before ?? item.after }) }}>{item.example ? t.sample : t.again}</button>
               </div>
               {!item.example && (!confirmDel ? (
                 <button className="danger" onClick={() => setConfirmDel(true)}>{t.del}</button>
@@ -161,7 +225,7 @@ export default function App() {
                   <p>{t.delQ}</p>
                   <div className="row2">
                     <button className="cta2" onClick={() => setConfirmDel(false)}>{t.keep}</button>
-                    <button className="cta2 red" onClick={async () => { await deleteBuild(item.id); closeSheet(); loadBuilds(); toast(t.deleted) }}>{t.del2}</button>
+                    <button className="cta2 red" onClick={async () => { await deleteBuild(item.id).catch(() => {}); closeSheet(); loadBuilds(); toast(t.deleted) }}>{t.del2}</button>
                   </div>
                 </div>
               ))}

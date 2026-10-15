@@ -8,16 +8,20 @@ async function openAdmin(page: Page) {
     await pass.fill('test-admin-pass')
     await page.getByRole('button', { name: 'Open admin' }).click()
   }
-  await expect(page.getByText('Your brand')).toBeVisible()
+  await expect(page.getByText('Body shops and links')).toBeVisible()
 }
+const newPhone = () => `${Math.floor(2000000000 + Math.random() * 7999999999)}`
 
-test('client: style → sign-up → render → gallery, cost never shown; admin sees the client and the cost', async ({ page, context }) => {
-  const phone = `${Math.floor(2000000000 + Math.random() * 7999999999)}`
+test('client: look → sign-up → install pop-up → render, cost never shown; gallery keeps it; admin sees the client and cost', async ({ page, context }) => {
+  const phone = newPhone()
   await page.goto('/')
-  await expect(page.getByText('Your Shop Name').first()).toBeVisible()
+  await expect(page.locator('.bar .word')).toHaveText('Auto Studio')
   await expect(page.getByText('3 free renders, no card needed')).toBeVisible()
+  await expect(page.locator('.hero .ba').first()).toBeVisible()
 
-  await page.getByRole('button', { name: /Blackout/ }).first().click()
+  await page.getByRole('button', { name: 'Tuning', exact: true }).click()
+  await page.getByRole('button', { name: 'Try with a sample car' }).click()
+  await page.getByRole('button', { name: /Blackout/ }).click()
   await expect(page.getByText('5 changes')).toBeVisible()
   await page.getByRole('button', { name: 'Render build' }).click()
 
@@ -30,14 +34,24 @@ test('client: style → sign-up → render → gallery, cost never shown; admin 
   await page.fill('#su-email', `${phone}@example.com`)
   await sheet.getByRole('button', { name: /Get free renders/ }).click()
 
-  await expect(page.getByRole('status').filter({ hasText: 'Rendering your build' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Save to gallery' })).toBeVisible({ timeout: 20000 })
+  // The install pop-up comes before the result, and can be skipped.
+  const inst = page.getByRole('dialog', { name: 'Install the Auto Studio app' })
+  await expect(inst).toBeVisible()
+  await expect(inst.getByText('Your free renders are active')).toBeVisible()
+  await expect(inst.getByText('On iPhone: 3 taps')).toBeVisible()
+  await expect(inst.getByText('Choose “Add to Home Screen”')).toBeVisible()
+  // The address saved to the home screen signs the client in and keeps the shop.
+  expect(new URL(page.url()).searchParams.get('u')).toMatch(/^[a-f0-9]{16,}$/)
+  expect(new URL(page.url()).searchParams.get('s')).toBe('main')
+  await inst.getByRole('button', { name: 'Later' }).click()
+
+  await expect(page.getByRole('button', { name: 'Save to Photos' })).toBeVisible({ timeout: 20000 })
   await expect(page.getByText('2 free renders left')).toBeVisible()
   await expect(page.locator('body')).not.toContainText(/\$0\.|credits|cr\b/)
 
-  await page.getByRole('button', { name: 'Save to gallery' }).click()
   await page.getByRole('button', { name: 'Gallery', exact: true }).click()
   await expect(page.getByText('1 build')).toBeVisible()
+  await expect(page.locator('.grid .tile').first()).toContainText('Blackout')
 
   const admin = await context.newPage()
   await openAdmin(admin)
@@ -46,10 +60,16 @@ test('client: style → sign-up → render → gallery, cost never shown; admin 
   await expect(row).toContainText(`${phone}@example.com`)
   await expect(row).toContainText('1 used · 2 left')
   await expect(admin.locator('li', { hasText: 'Blackout' }).first()).toContainText('$0.117')
+
+  // Opening the saved home-screen address (a new phone storage) shows the same client and gallery.
+  const installed = await context.browser()!.newPage({ viewport: { width: 390, height: 844 } })
+  await installed.goto(page.url().replace(/\?.*$/, '') + `?${new URL(page.url()).searchParams}&tab=gal`)
+  await expect(installed.getByText('1 build')).toBeVisible()
+  await installed.close()
 })
 
 test('parts tab builds a custom render and runs out after 3 free renders', async ({ page }) => {
-  const phone = `${Math.floor(2000000000 + Math.random() * 7999999999)}`
+  const phone = newPhone()
   await page.goto('/')
   await page.getByRole('button', { name: 'Tuning', exact: true }).click()
   await page.getByRole('button', { name: 'Try with a sample car' }).click()
@@ -61,6 +81,7 @@ test('parts tab builds a custom render and runs out after 3 free renders', async
   await page.fill('#su-phone', phone)
   await page.fill('#su-email', `${phone}@example.com`)
   await page.getByRole('button', { name: /Get free renders/ }).click()
+  await page.getByRole('button', { name: 'Later' }).click()
   for (const left of ['2 free renders left', '1 free render left', 'Free renders are used up']) {
     await expect(page.getByText(left)).toBeVisible({ timeout: 20000 })
     if (left.startsWith('Free')) break
@@ -72,28 +93,47 @@ test('parts tab builds a custom render and runs out after 3 free renders', async
   await expect(page.getByRole('dialog', { name: 'You have used your free renders' })).toBeVisible()
 })
 
-test('admin: rename the shop and upload a logo, the client app shows them', async ({ page, context }) => {
+test('the page behind an open sheet does not scroll', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Settings' }).click()
+  await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible()
+  const before = await page.evaluate(() => document.body.style.position)
+  expect(before).toBe('fixed')
+  await page.mouse.wheel(0, 800)
+  await page.waitForTimeout(300)
+  await expect(page.locator('.bar')).toBeInViewport()
+  await page.getByRole('button', { name: 'Done' }).click()
+  expect(await page.evaluate(() => document.body.style.position)).toBe('')
+})
+
+test('admin: create a body shop link; clients from it see that shop and are marked with it', async ({ page, context }) => {
   await openAdmin(page)
-  await page.getByLabel('Business name').fill("Joe's Collision")
+  await page.getByRole('button', { name: 'Add a body shop' }).click()
+  await page.getByLabel('Shop name').fill("Joe's Collision")
   await page.getByLabel('Phone clients can call').fill('(555) 777-0000')
-  await page.locator('input[type=file]').setInputFiles('public/pwa-512x512.png')
-  await expect(page.locator('.logo-row img.mark')).toBeVisible()
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible()
+  await page.locator('.editor input[type=file]').setInputFiles('public/pwa-512x512.png')
+  await expect(page.locator('.phone .ph-bar')).toContainText("Joe's Collision")
+  await page.getByRole('button', { name: 'Create link' }).click()
+  const li = page.locator('.shop-list li', { hasText: "Joe's Collision" })
+  await expect(li).toContainText('Link is ready')
+  const link = await li.locator('input').inputValue()
+  expect(link).toMatch(/\?s=[a-z0-9]{8}$/)
 
-  const app = await context.newPage()
-  await app.goto('/')
+  const app = await context.browser()!.newPage({ viewport: { width: 390, height: 844 } })
+  await app.goto(link.replace(/^https?:\/\/[^/]+/, 'http://localhost:4173'))
   await expect(app.locator('.bar .word')).toHaveText("Joe's Collision")
-  await expect(app.locator('.bar img.mark')).toBeVisible()
-  await expect(app.locator('.shopfoot a')).toHaveText('(555) 777-0000')
+  await expect(app.locator('.bar img.mark')).toHaveAttribute('src', /logo\?shop=/)
+  await expect(app.locator('.shopfoot .callbtn')).toHaveAttribute('href', 'tel:5557770000')
   await expect(app).toHaveTitle("Joe's Collision")
+  // The main link stays neutral.
+  const main = await context.browser()!.newPage()
+  await main.goto('/?s=main')
+  await expect(main.locator('.bar .word')).toHaveText('Auto Studio')
 
-  // reset for other runs
-  await page.getByLabel('Business name').fill('')
-  await page.getByLabel('Phone clients can call').fill('')
-  await page.getByRole('button', { name: 'Remove logo' }).click()
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('button', { name: 'Saved' })).toBeVisible()
+  await page.reload()
+  await page.locator('.shop-list li', { hasText: "Joe's Collision" }).getByRole('button', { name: 'Delete' }).click()
+  await page.getByRole('button', { name: 'Delete' }).last().click()
+  await expect(page.locator('.shop-list li', { hasText: "Joe's Collision" })).toHaveCount(0)
 })
 
 test('admin rejects a wrong password', async ({ page }) => {

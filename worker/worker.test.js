@@ -66,7 +66,7 @@ describe('brand', () => {
     expect((await call('/config')).body).toMatchObject({ name: '', logo: null, free: 3, vapidPublic: vapid.pub })
     expect((await call('/admin/brand', { method: 'PUT', admin: 'pw', body: { name: "Joe's Body Shop", phone: '+1 555 123 4567', free: 3 } })).status).toBe(200)
     const logo = await call('/admin/logo', { method: 'PUT', admin: 'pw', body: { image: 'data:image/png;base64,' + btoa('png') } })
-    expect(logo.body.logo).toMatch(/^https:\/\/proxy\.test\/logo\?v=/)
+    expect(logo.body.logo).toMatch(/^https:\/\/proxy\.test\/logo\?shop=main&v=/)
     expect((await call('/config')).body).toMatchObject({ name: "Joe's Body Shop", phone: '+1 555 123 4567' })
     const file = await worker.fetch(new Request(BASE + '/logo'), env, {})
     expect(file.status).toBe(200)
@@ -176,5 +176,78 @@ describe('admin push', () => {
     const subscription = { endpoint: 'https://push.test/sub/2', keys: { p256dh: b64u(await crypto.subtle.exportKey('raw', ua.publicKey)), auth: b64u(new Uint8Array(16)) } }
     await call('/admin/push', { method: 'POST', admin: 'pw', body: { subscription } })
     expect((await call('/admin/push/test', { method: 'POST', admin: 'pw' })).body.sent).toBe(1)
+  })
+})
+
+describe('shops: one link per body shop', () => {
+  it('creates a shop with its own name, logo and link; clients who come through it belong to it', async () => {
+    const created = (await call('/admin/shops', { method: 'POST', admin: 'pw', body: { name: 'Joe Collision', phone: '+1 555 700 0000', free: 5, logo: 'data:image/png;base64,' + btoa('logo') } })).body
+    expect(created.id).toMatch(/^[a-z0-9]{8}$/)
+    expect(created).toMatchObject({ name: 'Joe Collision', free: 5 })
+    expect(created.logo).toContain(`shop=${created.id}`)
+    expect((await call(`/config?shop=${created.id}`)).body.name).toBe('Joe Collision')
+    expect((await call('/config?shop=unknown1')).body.id).toBe('main') // unknown link falls back to the main brand
+
+    const reg = (await register({ shop: created.id })).body
+    expect(reg.left).toBe(5)
+    expect((await call('/me', { user: reg.token })).body.shop).toBe(created.id)
+    const clients = (await call('/admin/clients', { admin: 'pw' })).body
+    expect(clients[0]).toMatchObject({ shop: created.id, shopName: 'Joe Collision' })
+
+    await call(`/admin/shops/${created.id}`, { method: 'PUT', admin: 'pw', body: { name: 'Joe Collision & Paint' } })
+    const shops = (await call('/admin/shops', { admin: 'pw' })).body
+    expect(shops.map((s) => s.name)).toEqual(['', 'Joe Collision & Paint'])
+    expect((await call(`/admin/shops/${created.id}`, { method: 'DELETE', admin: 'pw' })).body.ok).toBe(true)
+    expect((await call('/admin/shops', { admin: 'pw' })).body).toHaveLength(1)
+  })
+
+  it('serves an install manifest with the shop name and a start link that signs the client in', async () => {
+    const shop = (await call('/admin/shops', { method: 'POST', admin: 'pw', body: { name: 'Prime Detail' } })).body
+    const r = await worker.fetch(new Request(`${BASE}/manifest.webmanifest?shop=${shop.id}&u=abc123`), env, {})
+    expect(r.headers.get('Content-Type')).toBe('application/manifest+json')
+    const m = await r.json()
+    expect(m.name).toBe('Prime Detail')
+    expect(m.start_url).toBe(`https://appshalamov.github.io/ai-car-studio/?s=${shop.id}&u=abc123`)
+    expect(m.scope).toBe('https://appshalamov.github.io/ai-car-studio/')
+    expect(m.icons[0].src).toMatch(/pwa-192x192\.png$/)
+  })
+})
+
+describe('builds are kept for the client', () => {
+  it('stores before and after so the installed app shows the build, and the client can delete it', async () => {
+    const { token } = (await register()).body
+    await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img], label: 'Blackout' } })
+    const { builds, pending } = (await call('/builds', { user: token })).body
+    expect(pending).toBe(false)
+    expect(builds).toHaveLength(1)
+    expect(builds[0]).toMatchObject({ label: 'Blackout' })
+    expect(builds[0].after).toMatch(/^https:\/\/proxy\.test\/img\/builds\/.+-a\.png$/)
+    expect(builds[0].before).toMatch(/-b\.jpg$/)
+    const file = await worker.fetch(new Request(builds[0].after), env, {})
+    expect(file.status).toBe(200)
+    await call(`/builds/${builds[0].id}`, { method: 'DELETE', user: token })
+    expect((await call('/builds', { user: token })).body.builds).toHaveLength(0)
+    expect([...env.IMAGES.m.keys()].filter((k) => k.startsWith('builds/'))).toHaveLength(0)
+  })
+})
+
+describe('client push: "your build is ready"', () => {
+  it('reaches the client\'s phone in their language with a link that opens their gallery, and keeps the build title', async () => {
+    const ua = await crypto.subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveBits'])
+    const auth = crypto.getRandomValues(new Uint8Array(16))
+    const subscription = { endpoint: 'https://push.test/client/1', keys: { p256dh: b64u(await crypto.subtle.exportKey('raw', ua.publicKey)), auth: b64u(auth) } }
+    const { token } = (await register()).body
+    expect((await call('/me/push', { method: 'POST', user: token, body: { subscription, lang: 'ru' } })).status).toBe(200)
+    expect((await call('/me/push', { method: 'POST', body: { subscription } })).status).toBe(401)
+
+    await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img], label: 'Blackout', title: 'Блэкаут' } })
+    const mine = pushes.filter((p) => p.url.startsWith('https://push.test/client/'))
+    expect(mine).toHaveLength(1)
+    const msg = await decrypt(new Uint8Array(mine[0].init.body), ua, auth)
+    expect(msg.title).toBe('Auto Studio')
+    expect(msg.body).toBe('Mike, ваша сборка готова. Откройте, чтобы сравнить с фото.')
+    expect(msg.url).toBe(`https://appshalamov.github.io/ai-car-studio/?s=main&u=${token}&tab=gal`)
+    expect(JSON.stringify(msg)).not.toMatch(/\$|кр\.|credit/) // the client never sees the cost
+    expect((await call('/builds', { user: token })).body.builds[0].label).toBe('Блэкаут')
   })
 })

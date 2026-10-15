@@ -11,16 +11,16 @@ cleanupOutdatedCaches()
 precacheAndRoute(self.__WB_MANIFEST)
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html'), { denylist: [/admin\.html/] }))
 
-// Admin pushes: new client, each render with its cost.
+// Admin pushes (new client, each render with its cost) and the client's "build is ready".
 self.addEventListener('push', (e) => {
-  let d: { title?: string; body?: string; url?: string; tag?: string } = {}
+  let d: { title?: string; body?: string; url?: string; tag?: string; icon?: string } = {}
   try { d = e.data?.json() ?? {} } catch { d = { body: e.data?.text() } }
-  e.waitUntil(self.registration.showNotification(d.title || 'Car Studio', {
+  e.waitUntil(self.registration.showNotification(d.title || 'Auto Studio', {
     body: d.body || '',
-    icon: './pwa-192x192.png',
+    icon: d.icon || './pwa-192x192.png',
     badge: './pwa-192x192.png',
     tag: d.tag,
-    data: { url: d.url || 'admin.html' },
+    data: { url: d.url || './' },
   }))
 })
 

@@ -1,21 +1,45 @@
+import { useRef, useState } from 'react'
 import { useT } from '../lib/i18n'
-import { STYLES } from '../lib/build'
 import { shopName, type Brand } from '../lib/api'
+import type { Car } from '../lib/cars'
 import { BeforeAfter } from '../components/BeforeAfter'
 import { BrandMark } from '../components/BrandMark'
-import { IGear, ILock } from '../components/Icons'
+import { IGear, ILock, IPhone } from '../components/Icons'
 
-type Props = { brand: Brand; freeLeft: number; onUpload: () => void; onStyle: (id: string) => void; onSettings: () => void }
+type Props = { brand: Brand; cars: Car[]; freeLeft: number; onUpload: () => void; onSettings: () => void }
 
-export function Home({ brand, freeLeft, onUpload, onStyle, onSettings }: Props) {
+export function Home({ brand, cars, freeLeft, onUpload, onSettings }: Props) {
   const { t, lang } = useT()
+  const [idx, setIdx] = useState(0)
+  const rail = useRef<HTMLDivElement>(null)
+  const go = (i: number) => rail.current?.scrollTo({ left: i * rail.current.clientWidth, behavior: 'smooth' })
+  const car = cars[Math.min(idx, cars.length - 1)]
+
   return (
     <section className="screen" aria-label={t.tHome}>
       <div className="bar">
         <span className="brand"><BrandMark brand={brand} /><span className="word">{shopName(brand)}</span></span>
         <button className="ibtn" onClick={onSettings} aria-label={t.setT}><IGear /></button>
       </div>
-      <BeforeAfter before="./img/stock.jpg" after="./img/blackout.jpg" labels={[t.before, t.after]} hint />
+
+      <div className="hero">
+        <div className="hero-rail" ref={rail} onScroll={(e) => { const el = e.currentTarget; setIdx(Math.round(el.scrollLeft / Math.max(1, el.clientWidth))) }}>
+          {cars.map((c, i) => (
+            <div className="hero-slide" key={c.slug}>
+              <BeforeAfter before={c.before} after={c.after} labels={[t.before, t.after]} hint={i === 0} knobOnly={cars.length > 1} />
+            </div>
+          ))}
+        </div>
+        <div className="hero-cap pad">
+          <div><b>{car.model}</b><span>{lang === 'ru' ? car.mods_ru : car.mods_en}</span></div>
+          {cars.length > 1 && (
+            <div className="dots" role="tablist" aria-label={t.examplesT}>
+              {cars.map((c, i) => <button key={c.slug} role="tab" aria-selected={i === idx} aria-label={c.model} onClick={() => go(i)} />)}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div className="pad">
         <h1 className="hero-t">{t.heroT}</h1>
         <p className="hero-p">{t.heroP}</p>
@@ -27,20 +51,11 @@ export function Home({ brand, freeLeft, onUpload, onStyle, onSettings }: Props) 
           <li><span className="num">2</span><div><b>{t.s2}</b><span>{t.s2p}</span></div></li>
           <li><span className="num">3</span><div><b>{t.s3}</b><span>{t.s3p}</span></div></li>
         </ol>
-        <h2 className="h2">{t.startT}</h2>
-      </div>
-      <div className="rail">
-        {STYLES.map((s) => (
-          <button key={s.id} onClick={() => onStyle(s.id)}>
-            <img src={`./img/${s.id}.jpg`} alt="" loading="lazy" />
-            <b>{s[lang][0]}</b>
-            <span>{s[lang][1]}</span>
-          </button>
-        ))}
       </div>
       <footer className="shopfoot pad">
-        <BrandMark brand={brand} size={40} />
-        <div><b>{shopName(brand)}</b>{brand.phone && <a href={`tel:${brand.phone.replace(/[^\d+]/g, '')}`}>{brand.phone}</a>}</div>
+        <BrandMark brand={brand} size={44} />
+        <div><b>{shopName(brand)}</b><span>{t.shopLine}</span></div>
+        {brand.phone && <a className="callbtn" href={`tel:${brand.phone.replace(/[^\d+]/g, '')}`} aria-label={t.call}><IPhone /></a>}
       </footer>
     </section>
   )

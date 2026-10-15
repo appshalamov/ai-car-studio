@@ -65,7 +65,7 @@ export async function shareDataUrl(dataUrl: string, filename: string, text: stri
   const file = new File([dataUrlToBlob(dataUrl)], filename, { type: dataUrlParts(dataUrl).mime })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.share && nav.canShare?.({ files: [file] })) {
-    await nav.share({ files: [file], title: 'Car Studio', text })
+    await nav.share({ files: [file], title: 'Auto Studio', text })
     return true
   }
   downloadDataUrl(dataUrl, filename)
@@ -75,4 +75,20 @@ export async function shareDataUrl(dataUrl: string, filename: string, text: stri
 export function extFromDataUrl(dataUrl: string) {
   const mime = dataUrlParts(dataUrl).mime
   return mime.includes('png') ? 'png' : mime.includes('webp') ? 'webp' : 'jpg'
+}
+
+/** Fetches an image (same origin or a CORS-enabled server URL) and returns it as a downscaled data URL. */
+export async function urlToDataUrl(url: string, maxSide = 1600): Promise<string> {
+  if (url.startsWith('data:')) return downscale(url, maxSide)
+  const blob = await fetch(url).then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob() })
+  const raw = await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = () => rej(fr.error); fr.readAsDataURL(blob) })
+  return downscale(raw, maxSide)
+}
+
+/** Share sheet with the image file (on iPhone it has "Save Image"), or a download elsewhere. */
+export async function shareUrl(url: string, filename: string, text: string) {
+  if (url.startsWith('data:')) return shareDataUrl(url, filename, text)
+  const blob = await fetch(url).then((r) => r.blob())
+  const raw = await new Promise<string>((res) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(blob) })
+  return shareDataUrl(raw, filename, text)
 }

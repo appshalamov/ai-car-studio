@@ -62,3 +62,35 @@ h2 { font-size: 19px; letter-spacing: -.02em; margin: 0 0 4px; display: flex; ga
   .list .meta { justify-content: flex-start }
   .top nav .btn { height: 40px; padding: 0 12px; font-size: 14px }
 }
+
+/* body shops and their links */
+.cols:has(> :only-child) { grid-template-columns: minmax(0, 1fr) }
+.h2row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap }
+.h2row h2 { margin: 0 }
+.h2row .btn.y { width: auto; margin: 0; height: 44px }
+.chip { display: inline-block; font-size: 12px !important; font-weight: 600; color: var(--ink) !important; background: var(--studio); border-radius: 8px; padding: 2px 8px }
+.shop-list li { grid-template-columns: minmax(0, 1fr); gap: 10px }
+.shop-main { display: flex; gap: 12px; align-items: center; min-width: 0 }
+.shop-main > div { display: grid; min-width: 0 }
+.shop-main b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.linkrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center }
+.linkrow input { flex: 1 1 260px; min-width: 0; height: 44px; border-radius: 12px; border: 0; background: var(--studio); padding: 0 12px; font: inherit; font-size: 14px; color: var(--ink-2) }
+.linkrow .btn.y { width: auto; margin: 0; height: 44px }
+.btn.red, .lnk.red { color: var(--danger, #b3261e) }
+.editor { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 24px; margin: 12px 0 8px; padding: 16px; border-radius: 18px; background: var(--studio) }
+.editor .fld input { background: var(--paper) }
+.editor .card .btn:not(.y), .editor .btn:not(.y) { background: var(--paper) }
+.ed-form h3 { margin: 0 0 4px; font-size: 18px }
+.ed-actions { display: flex; gap: 10px; margin-top: 12px }
+.ed-actions .btn.y { width: auto; margin: 0; flex: 1 }
+.phone-prev { display: grid; gap: 6px; align-content: start }
+.phone { border-radius: 28px; background: #e6e3de; box-shadow: 0 0 0 6px #191a18, 0 12px 30px rgba(0, 0, 0, .18); padding: 14px 12px 16px; display: grid; gap: 10px; margin: 6px }
+.ph-bar { display: flex; gap: 8px; align-items: center; min-width: 0 }
+.ph-bar b { font-size: 15px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.ph-photo img { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 12px; display: block }
+.ph-t { margin: 0; font-weight: 800; font-size: 16px; line-height: 1.1; letter-spacing: -.02em }
+.ph-cta { height: 30px; border-radius: 10px; background: #f2c230 }
+.ph-foot { display: flex; gap: 8px; align-items: center; font-size: 12px; font-weight: 600; border-top: 1px solid rgba(25, 26, 24, .12); padding-top: 8px; min-width: 0 }
+.ph-foot span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.ph-foot i { font-style: normal; background: #f2c230; border-radius: 8px; padding: 3px 8px }
+@media (max-width: 720px) { .editor { grid-template-columns: minmax(0, 1fr) } .phone-prev { max-width: 260px; justify-self: center; width: 100% } }
