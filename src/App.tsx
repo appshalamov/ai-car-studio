@@ -41,6 +41,7 @@ export default function App() {
   const [confirmDel, setConfirmDel] = useState(false)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const waitContacts = useRef<{ req: RenderReq; resolve: (img: string | null) => void } | null>(null)
   const toastT = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const toast = useCallback((m: string) => {
@@ -113,7 +114,13 @@ export default function App() {
   const requestRender = async (photo: string, prompt: string, label: string, title: string) => {
     let c = client
     if (!c) {
-      try { c = await startSession() } catch (e) { const x = e as ApiError; toast(!x.status ? t.offline : x.status === 429 ? t.busyT : t.err); return null }
+      try { c = await startSession() } catch (e) {
+        const x = e as ApiError
+        // A server without /start yet: contacts first, then the render.
+        if (x.status === 404) return new Promise<string | null>((resolve) => { waitContacts.current = { req: { photo, prompt, label, title }, resolve }; setSheet('signup') })
+        toast(!x.status ? t.offline : x.status === 429 ? t.busyT : t.err)
+        return null
+      }
       setClient(c)
     }
     return doRender(c, { photo, prompt, label, title })
@@ -129,6 +136,7 @@ export default function App() {
   }
 
   const closeSheet = () => {
+    if (waitContacts.current) { waitContacts.current.resolve(null); waitContacts.current = null }
     setSheet(null)
     setConfirmDel(false)
   }
@@ -195,6 +203,16 @@ export default function App() {
           )}
           <div className="field"><small>{t.privacy}</small></div>
           <button className="cta" style={{ marginTop: 22 }} onClick={closeSheet}>{t.done}</button>
+        </Sheet>
+
+        <Sheet open={sheet === 'signup'} onClose={closeSheet} label={t.signL}>
+          <SignUp brand={brand} rendering={false} onDone={(c, returning) => {
+            const w = waitContacts.current
+            waitContacts.current = null
+            setSheet(null)
+            onContacts(c, returning)
+            if (w) doRender(c, w.req).then(w.resolve)
+          }} />
         </Sheet>
 
         <Sheet open={sheet === 'install'} onClose={closeSheet} label={t.inst.title(shopName(brand))}>
