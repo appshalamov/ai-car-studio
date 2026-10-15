@@ -214,3 +214,19 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .toast.on { transform: translate(-50%, 0); opacity: 1 }
 
 @media (prefers-reduced-motion: reduce) { *, *::before { transition: none !important; animation: none !important } }
+
+/* rendering in progress: dimmed photo, scan line, a clear card */
+.vimg:has(.rendering) { min-height: 300px }
+.rendering { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(25, 26, 24, .5); -webkit-backdrop-filter: blur(3px) saturate(80%); backdrop-filter: blur(3px) saturate(80%); overflow: hidden; animation: fadein .3s ease-out }
+@keyframes fadein { from { opacity: 0 } }
+.rendering .scan { position: absolute; left: 0; right: 0; height: 30%; top: -30%; background: linear-gradient(transparent, rgba(242, 194, 48, .28) 70%, rgba(242, 194, 48, .9) 98%, transparent); animation: scan 2.2s cubic-bezier(.45, 0, .55, 1) infinite; pointer-events: none }
+@keyframes scan { to { top: 100% } }
+.rcard { position: relative; width: min(100%, 320px); display: grid; justify-items: center; gap: 6px; text-align: center; padding: 18px 18px 14px; border-radius: 22px; background: var(--glass); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 10px 30px rgba(0, 0, 0, .25) }
+.rcard b { font-size: 17px; line-height: 1.2 }
+.rstep { font-size: 14px; color: var(--ink-2); animation: fadein .4s ease-out }
+.rcard small { font-size: 12px; color: var(--ink-3); line-height: 1.3 }
+.ring { width: 38px; height: 38px; border-radius: 50%; border: 3.5px solid var(--hair); border-top-color: var(--signal); animation: spin .8s linear infinite; margin-bottom: 4px }
+@keyframes spin { to { transform: rotate(360deg) } }
+.rbar { width: 100%; height: 6px; border-radius: 3px; background: var(--hair); overflow: hidden; margin: 6px 0 2px }
+.rbar i { display: block; height: 100%; border-radius: 3px; background: var(--signal); transition: width 1s linear }
+.locked { pointer-events: none; opacity: .45; transition: opacity .3s }

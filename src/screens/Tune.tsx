@@ -5,6 +5,7 @@ import { fileToDataUrl, shareDataUrl, urlToDataUrl } from '../lib/image'
 import { shopName, type Brand } from '../lib/api'
 import type { Car } from '../lib/cars'
 import { BeforeAfter } from '../components/BeforeAfter'
+import { Rendering } from '../components/Rendering'
 import { IAngle, ICam, ICar, IPhone, ISun } from '../components/Icons'
 
 type Version = { img: string; sel: Sel; style: string | null; label: string }
@@ -32,7 +33,6 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
   const [cur, setCur] = useState(0)
   const [view, setView] = useState<'pick' | 'result'>('pick')
   const [busy, setBusy] = useState(false)
-  const [slow, setSlow] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
   const top = useRef<HTMLDivElement>(null)
 
@@ -68,8 +68,6 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
   const go = async () => {
     if (!photo || !n || busy) return
     setBusy(true)
-    setSlow(false)
-    const slowT = setTimeout(() => setSlow(true), 25000)
     top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     try {
       // The admin sees build names in English whatever the client's language.
@@ -80,7 +78,6 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
         setView('result')
       }
     } finally {
-      clearTimeout(slowT)
       setBusy(false)
     }
   }
@@ -114,11 +111,11 @@ export function Tune({ active, brand, cars, incoming, freeLeft, render, toast }:
               {view === 'result' && v && !busy
                 ? <BeforeAfter key={cur} before={photo} after={v.img} labels={[t.before, t.after]} />
                 : <img src={photo} alt={t.yourCar} />}
-              {busy && <><div className="sweep" /><p className="busy" role="status">{slow ? t.renderLong : t.rendering}</p></>}
+              {busy && <Rendering steps={t.rsteps} />}
             </div>
           </div>
           {view === 'pick' ? (
-            <div>
+            <div className={busy ? 'locked' : undefined}>
               <div className="tabs" role="tablist">
                 <button role="tab" aria-selected={tab === 'styles'} onClick={() => setTab('styles')}>{t.styles}</button>
                 <button role="tab" aria-selected={tab === 'parts'} onClick={() => setTab('parts')}>{t.parts}</button>
