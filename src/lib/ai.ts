@@ -1,6 +1,7 @@
 import { dataUrlParts, dataUrlToBlob, loadImage } from './image'
 import { loadSettings, type Settings } from './settings'
 import { wosoGenerate } from './woso'
+import { SERVICE_URL, serviceGenerate } from './service'
 
 export type DemoHint = { tint?: string; scene?: [string, string]; pattern?: boolean }
 
@@ -13,6 +14,7 @@ export type EditRequest = {
 }
 
 export async function runAI(req: EditRequest, settings: Settings = loadSettings()): Promise<string> {
+  if (SERVICE_URL) return serviceGenerate(req, settings.quality === 'ultra')
   switch (settings.provider) {
     case 'gemini':
       return gemini(req, settings)

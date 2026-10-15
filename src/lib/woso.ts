@@ -109,7 +109,7 @@ function failIfError(res: ToolResult) {
   if (res.isError) throw new Error(`woso: ${res.text.slice(0, 300)}`)
 }
 
-async function toDataUrl(url: string): Promise<string> {
+export async function toDataUrl(url: string): Promise<string> {
   try {
     const r = await fetch(url)
     if (!r.ok) return url

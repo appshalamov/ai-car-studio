@@ -6,6 +6,7 @@ import { clearHistory } from '../lib/db'
 import { PageHead } from '../components/PageHead'
 import { WOSO_PRICES, fmtCost, wosoQuote } from '../lib/woso'
 import { askNotifyPermission } from '../lib/notify'
+import { SERVICE_URL } from '../lib/service'
 
 export default function Settings() {
   const { t, lang, setLang } = useLang()
@@ -47,6 +48,7 @@ export default function Settings() {
   return (
     <div className="page narrow">
       <PageHead title={t('Настройки', 'Settings')} />
+      {!SERVICE_URL && (
       <section className="card pad stack">
         <b>{t('AI-провайдер', 'AI provider')}</b>
         {providers.map((p) => (
@@ -122,7 +124,7 @@ export default function Settings() {
         {test && <div className="small">{test}</div>}
         <p className="muted small">🔒 {t('Ключи хранятся только в этом браузере и отправляются напрямую провайдеру. Не используйте приложение с ключом на чужих устройствах.', 'Keys stay in this browser and are sent only to the provider. Don’t store your key on shared devices.')}</p>
       </section>
-
+      )}
       <section className="card pad stack">
         <b>{t('Приложение', 'App')}</b>
         <div className="row gap wrap">

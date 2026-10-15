@@ -1,3 +1,4 @@
+import { SERVICE_URL } from '../lib/service'
 import { Link } from 'react-router-dom'
 import { useLang } from '../lib/i18n'
 import { starterThumb } from '../lib/starters'
@@ -15,8 +16,8 @@ export default function Home() {
   ]
   const faq: [string, string][] = [
     [t('Что это за сервис?', 'What is this?'), t('AI-студия для автомобилистов и автобизнеса: превью тюнинга на фото своей машины, чистка фото и пакетная замена фонов для объявлений.', 'An AI studio for drivers and auto businesses: preview mods on your own car photo, clean photos, and batch-replace backgrounds for listings.')],
-    [t('Это бесплатно?', 'Is it free?'), t('Приложение бесплатно. Генерация идёт через ваш ключ Google Gemini (есть бесплатный лимит) или OpenAI — вы платите провайдеру напрямую по его тарифу.', 'The app is free. Rendering uses your own Google Gemini key (has a free tier) or OpenAI key, billed by the provider.')],
-    [t('Где хранятся фото и ключи?', 'Where are photos and keys stored?'), t('Только на вашем устройстве. Фото отправляются напрямую выбранному AI-провайдеру, без промежуточного сервера.', 'Only on your device. Photos go straight to the AI provider you chose, no middle server.')],
+    [t('Это бесплатно?', 'Is it free?'), SERVICE_URL ? t('Да, генерация для вас бесплатна. В приложении видно, сколько стоит каждое фото для сервиса.', 'Yes, rendering is free for you. The app shows what each photo costs the service.') : t('Приложение бесплатно. Генерация идёт через ваш ключ Google Gemini (есть бесплатный лимит) или OpenAI — вы платите провайдеру напрямую по его тарифу.', 'The app is free. Rendering uses your own Google Gemini key (has a free tier) or OpenAI key, billed by the provider.')],
+    [t('Где хранятся фото и ключи?', 'Where are photos and keys stored?'), SERVICE_URL ? t('История хранится только на вашем устройстве. Фото отправляются на генерацию через сервер сервиса и не сохраняются у нас.', 'History stays on your device. Photos go to rendering through the service server and are not kept by us.') : t('Только на вашем устройстве. Фото отправляются напрямую выбранному AI-провайдеру, без промежуточного сервера.', 'Only on your device. Photos go straight to the AI provider you chose, no middle server.')],
     [t('Как установить на телефон?', 'How do I install it?'), t('Android/Chrome: меню → «Установить приложение». iPhone/Safari: «Поделиться» → «На экран Домой». На компьютере — значок установки в адресной строке.', 'Android/Chrome: menu → Install app. iPhone/Safari: Share → Add to Home Screen. Desktop: the install icon in the address bar.')],
     [t('Сколько ждать результат?', 'How fast is it?'), t('Обычно 10–40 секунд на фото, зависит от модели и провайдера.', 'Usually 10–40 seconds per photo depending on model and provider.')],
     [t('Можно использовать в коммерции?', 'Commercial use?'), t('Результаты принадлежат вам; у вас должны быть права на загружаемые фото. Проверьте условия выбранного AI-провайдера.', 'You own the outputs; you need rights to your inputs. Check your AI provider terms.')],

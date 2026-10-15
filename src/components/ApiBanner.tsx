@@ -2,11 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang } from '../lib/i18n'
 import { useSettings } from '../lib/useSettings'
+import { SERVICE_URL, fmtCharge, getServicePrice, loadServicePrice, onServicePrice } from '../lib/service'
 import { WOSO_PRICES, fmtCost, getCost, onCostChange, wosoQuote } from '../lib/woso'
 
 export function ApiBanner() {
   const { t } = useLang()
   const s = useSettings()
+  if (SERVICE_URL) return <ServiceCost />
   if (s.provider === 'woso') return <WosoCost />
   if (s.provider !== 'demo') return null
   return (
@@ -43,6 +45,20 @@ function WosoCost() {
       <span>💰 {t('Себестоимость фото', 'Cost per photo')} · {model}: <b>{credits != null ? fmtCost(credits, s.wosoUsdPerCredit) : '…'}</b>
         {live?.balance != null && <> · {t('баланс', 'balance')} {live.balance.toFixed(2)} кр.</>}</span>
       <Link className="btn small" to="/settings">{t('Модель', 'Model')}</Link>
+    </div>
+  )
+}
+
+/** Hosted mode: free for the client, shows what one photo costs the studio. */
+function ServiceCost() {
+  const { t } = useLang()
+  const [, tick] = useState(0)
+  useEffect(() => onServicePrice(() => tick((n) => n + 1)), [])
+  useEffect(() => { if (!getServicePrice()) loadServicePrice().catch(() => {}) }, [])
+  const p = getServicePrice()
+  return (
+    <div className="banner">
+      <span>🎁 {t('Генерация для вас бесплатна', 'Rendering is free for you')} · {t('себестоимость фото', 'cost per photo')}: <b>{p ? fmtCharge(p.credits, p.usd) : '…'}</b></span>
     </div>
   )
 }

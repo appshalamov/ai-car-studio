@@ -1,0 +1,21 @@
+name = "ai-car-studio-woso"
+main = "woso-proxy.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+WOSO_MODEL = "nano-banana"
+USD_PER_CREDIT = "0.15"
+DAILY_LIMIT = "20"
+TOTAL_DAILY_LIMIT = "30"
+ALLOWED_ORIGIN = "https://appshalamov.github.io"
+
+[[r2_buckets]]
+binding = "IMAGES"
+bucket_name = "ai-car-studio-refs"
+
+# Create once: `npx wrangler r2 bucket create ai-car-studio-refs`
+# Token: `npx wrangler secret put WOSO_TOKEN` (never commit it).
+# Per-client daily limit: `npx wrangler kv namespace create LIMITS`, then add:
+# [[kv_namespaces]]
+# binding = "LIMITS"
+# id = "<id from the command above>"
