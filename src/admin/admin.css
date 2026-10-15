@@ -1,0 +1,64 @@
+:root {
+  --studio: #e6e3de; --paper: #f5f4f1; --ink: #191a18; --ink-2: #55564f; --ink-3: #8a8a83; --hair: rgba(25, 26, 24, .12);
+  --signal: #f2c230; --danger: #b3261e; --hl: #fbf1c9;
+  --font: "Onest", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box }
+html, body { margin: 0; background: var(--studio); color: var(--ink) }
+body { font-family: var(--font); font-size: 15px; line-height: 1.45; -webkit-font-smoothing: antialiased }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer }
+a { color: inherit }
+.adm { max-width: 1040px; margin: 0 auto; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 48px; display: grid; gap: 16px }
+.adm.narrow { max-width: 440px; padding-top: 12vh }
+h1 { font-size: 32px; letter-spacing: -.03em; margin: 0 }
+h2 { font-size: 19px; letter-spacing: -.02em; margin: 0 0 4px; display: flex; gap: 8px; align-items: baseline }
+.muted { color: var(--ink-2) }
+.small { font-size: 13px }
+.err { color: var(--danger); margin: 0 }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap }
+.who { display: flex; gap: 12px; align-items: center; min-width: 0 }
+.who div { display: grid; line-height: 1.2 }
+.who b { font-size: 20px; letter-spacing: -.02em }
+.who span { font-size: 13px; color: var(--ink-2) }
+.top nav { display: flex; gap: 8px }
+.mark { flex: none; border-radius: 9px; object-fit: cover; display: block; background: var(--paper) }
+.mark.ph { display: grid; place-items: center; font-size: 9px; font-weight: 700; letter-spacing: .06em; color: var(--ink-3); border: 1.5px dashed var(--ink-3) }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: 44px; padding: 0 18px; border-radius: 12px; background: var(--paper); font-weight: 600; text-decoration: none; cursor: pointer }
+.card .btn:not(.y) { background: var(--studio) }
+.btn.y { background: var(--signal); width: 100%; height: 50px; margin-top: 8px }
+.btn.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--hair) }
+.btn:disabled { opacity: .5 }
+.lnk { color: var(--ink-2); text-decoration: underline; font-size: 14px }
+.tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px }
+.tile { background: var(--paper); border-radius: 18px; padding: 16px; display: grid; gap: 2px }
+.tile span { font-size: 13px; color: var(--ink-2) }
+.tile b { font-size: 34px; font-weight: 800; letter-spacing: -.03em; font-variant-numeric: tabular-nums; line-height: 1.1 }
+.tile small { font-size: 12px; color: var(--ink-2) }
+.cols { display: grid; grid-template-columns: 1fr 1.4fr; gap: 16px; align-items: start }
+.card { background: var(--paper); border-radius: 20px; padding: 20px; display: grid; gap: 8px; align-content: start }
+.card p { margin: 0 }
+.fld { display: grid; gap: 6px; margin-top: 8px }
+.fld > span { font-size: 14px; font-weight: 600 }
+.fld input { height: 46px; border-radius: 12px; border: 0; background: var(--studio); padding: 0 14px; font: inherit; font-size: 16px; color: var(--ink); width: 100% }
+.logo-row { display: flex; gap: 14px; align-items: center }
+.logo-row > div { display: grid; gap: 6px; justify-items: start }
+.logo-row small { font-size: 12px }
+.preview { display: grid; gap: 6px; margin-top: 8px }
+.pbar { display: flex; gap: 10px; align-items: center; background: var(--studio); border-radius: 14px; padding: 10px 14px; min-width: 0 }
+.pbar b { font-size: 19px; font-weight: 800; letter-spacing: -.03em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.list { list-style: none; margin: 4px 0 0; padding: 0; display: grid }
+.list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; padding: 12px 8px; border-top: 1px solid var(--hair); border-radius: 10px }
+.list li.hl { background: var(--hl) }
+.list .main { display: flex; gap: 4px 14px; flex-wrap: wrap; align-items: baseline; min-width: 0 }
+.list .main a, .list .main span { color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere }
+.list .meta { display: flex; gap: 4px 14px; flex-wrap: wrap; justify-content: flex-end; font-size: 13px; color: var(--ink-2); align-items: baseline }
+.list .cost { color: var(--ink); font-weight: 700; font-size: 15px }
+.foot { text-align: center; margin: 0 }
+@media (max-width: 760px) {
+  .tiles { grid-template-columns: 1fr 1fr }
+  .cols { grid-template-columns: minmax(0, 1fr) }
+  .list li { grid-template-columns: minmax(0, 1fr) }
+  .list .meta { justify-content: flex-start }
+  .top nav .btn { height: 40px; padding: 0 12px; font-size: 14px }
+}

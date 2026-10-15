@@ -1,33 +1,29 @@
-# AI Car Studio
+# Car Studio (white-label demo for auto businesses)
 
-Устанавливаемое PWA-приложение для автомобилистов и автобизнеса: AI-визуализация тюнинга, чистка фото и пакетная замена фонов для дилеров. Функционально повторяет сервис modcar.ai, но со своим дизайном и брендом.
+A phone-first PWA for body shops, detailing centers and tuning shops in the US: a client uploads a photo of their own car, picks a style or parts, and gets a realistic render of the build. The shop's name and logo are set in the admin panel, so the same app is a demo for any shop.
 
-## Инструменты
+- **Client app** (`index.html`): Home, Tuning, Gallery. Design concept "Cyclorama": the app background is the photo studio floor, one yellow action per screen. English by default, Russian in settings.
+- **Sign-up for free renders**: the first render asks for phone and email; each client gets 3 free renders (set in the admin). The client never sees the cost.
+- **Admin panel** (`admin.html`, password = `ADMIN_PASSWORD`): business name, phone, square logo, free renders per client; woso balance; clients with contacts; every render with its cost in woso credits and dollars; web push to the owner on each new client and each render (with cost).
 
-- **Тюнинг авто**: загрузите фото или выберите одну из 8 стартовых машин, примените один из 17 пресетов или соберите до 6 доработок из 17 категорий каталога (цвет и тип покрытия, диски, подвеска, обвес, спойлер, плёнка, ливрея, карбон, свет, тонировка и т.д.), добавьте свой текстовый запрос или фото своей детали. Есть сравнение «до/после» и история версий.
-- **Тюнинг мото**: выхлоп, руль, пластик, колёса, сиденье, графика, 6 пресетов.
-- **AI-редактор фото**: убирает надписи на стёклах, наклейки, номера, рамки дилера, грязь, отражения и мусор на фоне.
-- **Фоны для дилеров**: пакет до 20 фото, 8 сцен или фото вашего шоурума, два режима обработки, статус и повтор по каждому фото, переименование файлов, экспорт ZIP с `manifest.json`.
-- **Винил для Tesla**: дизайн плёнки из фото или по описанию, готовые узоры, 3D-превью (three.js) и экспорт PNG до 1024×1024 и до 1 МБ.
-- **Галерея**: история генераций в IndexedDB на устройстве.
-- RU/EN интерфейс, офлайн-оболочка и установка как приложение (PWA).
+## How it fits together
 
-## AI
+```
+GitHub Pages (this app)  ──►  Cloudflare Worker (worker/)  ──►  woso.io (owner's account)
+                               KV DB: clients, renders, brand, push subscriptions, limits
+                               R2 IMAGES: logo, temporary reference photos
+```
 
-Генерация работает напрямую из браузера через ваш ключ (настройки ⚙︎):
+Worker routes: `GET /config`, `GET /logo`, `POST /register`, `GET /me` and `POST /generate` (header `X-User`), `/admin/*` (header `Authorization: Bearer <ADMIN_PASSWORD>`). Deploy steps are in `worker/wrangler.toml`. The app reads the Worker URL from the `SERVICE_URL` repository variable at build time.
 
-- **Google Gemini** (рекомендуется, есть бесплатный лимит): ключ на https://aistudio.google.com/apikey, модель по умолчанию `gemini-2.5-flash-image`.
-- **OpenAI** или любой OpenAI-совместимый API: модель `gpt-image-1`.
-- **Демо**: без ключа, грубая имитация на устройстве.
-
-Ключи хранятся только в `localStorage` браузера.
-
-## Разработка
+## Development
 
 ```bash
 npm install
-npm run dev     # локально
-npm run build   # сборка в dist/
+npm run dev        # app at /, admin at /admin.html (set VITE_SERVICE_URL)
+npm test           # Worker unit tests: sign-up, free renders, costs, admin auth, branding, web push encryption
+npm run test:e2e   # the real Worker with a fake woso + the built app in Chromium
+npm run build
 ```
 
-Публикация на GitHub Pages идёт автоматически из ветки `main` через `.github/workflows/deploy.yml`.
+Pushing to `main` runs lint, tests and deploys to GitHub Pages (`.github/workflows/deploy.yml`).

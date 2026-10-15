@@ -5,6 +5,12 @@
 export const API = ((import.meta.env.VITE_SERVICE_URL as string | undefined) ?? '').replace(/\/$/, '')
 
 export type Brand = { name: string; phone: string; logo: string | null; free: number; vapidPublic: string | null }
+export type ApiError = Error & { status?: number }
+
+/** What clients see until the owner names the shop in the admin panel. */
+export const PLACEHOLDER_NAME = 'Your Shop Name'
+export const DEFAULT_BRAND: Brand = { name: '', phone: '', logo: null, free: 3, vapidPublic: null }
+export const shopName = (b: Brand) => b.name.trim() || PLACEHOLDER_NAME
 export type Me = { token: string; left: number; name?: string }
 
 const ME_KEY = 'acs.me'
@@ -26,7 +32,19 @@ export async function getBrand(): Promise<Brand> {
   const fresh = req<Brand>('/config').then((b) => { brandCache = b; try { localStorage.setItem('acs.brand', JSON.stringify(b)) } catch { /* ignore */ } return b })
   return brandCache ?? fresh
 }
-export const refreshBrand = () => { brandCache = null; return getBrand() }
+/** Always asks the server (getBrand may answer from the device cache). */
+export async function refreshBrand(): Promise<Brand> {
+  const b = await req<Brand>('/config')
+  brandCache = b
+  try { localStorage.setItem('acs.brand', JSON.stringify(b)) } catch { /* ignore */ }
+  return b
+}
+/** Last brand seen on this device, for an instant first paint. */
+export function cachedBrand(): Brand {
+  try { const b = localStorage.getItem('acs.brand'); if (b) return { ...DEFAULT_BRAND, ...JSON.parse(b) } } catch { /* ignore */ }
+  return DEFAULT_BRAND
+}
+export const forgetMe = () => { try { localStorage.removeItem(ME_KEY) } catch { /* ignore */ } }
 
 export function getMe(): Me | null {
   try { const v = localStorage.getItem(ME_KEY); return v ? JSON.parse(v) : null } catch { return null }
@@ -51,10 +69,10 @@ export async function refreshMe(): Promise<Me | null> {
 }
 
 /** Renders a build. Throws with status 401 (not registered) or 402 (free renders used up). */
-export async function generate(p: { prompt: string; images: string[]; signal?: AbortSignal }): Promise<{ image: string; left: number }> {
+export async function generate(p: { prompt: string; images: string[]; label?: string; signal?: AbortSignal }): Promise<{ image: string; left: number }> {
   const me = getMe()
   if (!me) throw Object.assign(new Error('Нужна регистрация'), { status: 401 })
-  const r = await req<{ image: string; left: number }>('/generate', { method: 'POST', body: JSON.stringify({ prompt: p.prompt, images: p.images }), signal: p.signal }, { 'X-User': me.token })
+  const r = await req<{ image: string; left: number }>('/generate', { method: 'POST', body: JSON.stringify({ prompt: p.prompt, images: p.images, label: p.label }), signal: p.signal }, { 'X-User': me.token })
   setMe({ ...me, left: r.left })
   return r
 }
@@ -62,7 +80,7 @@ export async function generate(p: { prompt: string; images: string[]; signal?: A
 // ---------- admin ----------
 
 export type Client = { id: string; name?: string; phone: string; email: string; createdAt: number; used: number; left: number }
-export type GenLog = { at: number; userId: string; name?: string; phone?: string; email?: string; model: string; credits: number | null; usd: number | null; ok: boolean; error?: string }
+export type GenLog = { at: number; userId: string; name?: string; phone?: string; email?: string; label?: string; model: string; credits: number | null; usd: number | null; ok: boolean; error?: string }
 export type Summary = { balance: number | null; price: number | null; usdPerCredit: number; clients: number; generations: number; spentCredits: number; spentUsd: number }
 
 const ADMIN_KEY = 'acs.admin'

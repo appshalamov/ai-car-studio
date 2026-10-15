@@ -137,7 +137,7 @@ async function generate(request, env, origin) {
   const total = parseInt((await env.DB.get(totalKey)) || '0', 10)
   if (total >= parseInt(env.TOTAL_DAILY_LIMIT || '30', 10)) throw fail('Сервис перегружен, попробуйте завтра', 429)
 
-  const { prompt, images = [] } = await request.json()
+  const { prompt, images = [], label } = await request.json()
   if (!prompt || typeof prompt !== 'string') throw fail('prompt required', 400)
 
   // Reserve the render first so parallel taps can't exceed the free count.
@@ -148,7 +148,7 @@ async function generate(request, env, origin) {
   const model = env.WOSO_MODEL || 'nano-banana'
   const rate = parseFloat(env.USD_PER_CREDIT || '0.15')
   const refs = await storeRefs(env, origin, images.slice(0, 4))
-  const log = { at: Date.now(), userId: user.id, name: user.name, phone: user.phone, email: user.email, model, credits: null, usd: null, ok: false }
+  const log = { at: Date.now(), userId: user.id, name: user.name, phone: user.phone, email: user.email, label: String(label || '').slice(0, 80), model, credits: null, usd: null, ok: false }
   try {
     const args = { model, prompt: prompt.slice(0, 4000) }
     if (refs.urls.length === 1) args.image_url = refs.urls[0]
@@ -185,7 +185,7 @@ async function generate(request, env, origin) {
     await putJ(env, 'stats', stats)
     await pushAll(env, {
       title: 'Новая генерация',
-      body: `${user.name || user.phone}: себестоимость ${fmt(charged, rate)}${after != null ? ` · баланс woso ${after.toFixed(2)} кр.` : ''}`,
+      body: `${user.name || user.phone}${log.label ? ` · ${log.label}` : ''}: себестоимость ${fmt(charged, rate)}${after != null ? ` · баланс woso ${after.toFixed(2)} кр.` : ''}`,
       tag: `gen-${log.at}`,
     })
     return { image: await inlineImage(imageUrl(res)), left: left(env, user, brand) }
@@ -202,8 +202,8 @@ async function generate(request, env, origin) {
 
 async function writeLog(env, log) {
   const key = `gen:${String(9e15 - log.at).padStart(16, '0')}:${log.userId.slice(0, 6)}`
-  const { name, phone, email, model, credits, usd, ok, error, at } = log
-  await putJ(env, key, log, { metadata: { at, name, phone, email, model, credits, usd, ok, error: error?.slice(0, 120) } })
+  const { name, phone, email, label, model, credits, usd, ok, error, at } = log
+  await putJ(env, key, log, { metadata: { at, name, phone, email, label, model, credits, usd, ok, error: error?.slice(0, 120) } })
 }
 
 const fmt = (c, rate) => (c == null ? '—' : `${c.toFixed(2)} кр. (≈ $${(c * rate).toFixed(3)})`)

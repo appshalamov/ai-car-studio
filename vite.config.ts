@@ -4,34 +4,49 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   base: './',
+  build: {
+    rollupOptions: { input: { main: 'index.html', admin: 'admin.html' } },
+  },
   plugins: [
     react(),
     VitePWA({
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      injectRegister: false,
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png', 'img/*.jpg'],
       manifest: {
-        name: 'AI Car Studio',
+        name: 'Car Studio',
         short_name: 'Car Studio',
-        description: 'AI-визуализация тюнинга, чистка фото и замена фонов для автодилеров',
-        theme_color: '#0b0d12',
-        background_color: '#0b0d12',
+        description: 'See your car tuned before you buy a single part.',
+        theme_color: '#e6e3de',
+        background_color: '#e6e3de',
         display: 'standalone',
-        orientation: 'any',
+        orientation: 'portrait',
         start_url: './',
         scope: './',
-        lang: 'ru',
-        categories: ['productivity', 'photo', 'business'],
+        lang: 'en',
+        categories: ['lifestyle', 'photo'],
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,svg,png,jpg,webmanifest}'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        navigateFallback: 'index.html',
       },
     }),
+    {
+      // The admin page installs as its own app (admin.webmanifest), not as the client app.
+      name: 'admin-manifest-only',
+      enforce: 'post',
+      transformIndexHtml: {
+        order: 'post',
+        handler: (html, ctx) => (ctx.filename.endsWith('admin.html') ? html.replace(/<link rel="manifest" href="\.\/manifest\.webmanifest"\s*\/?>/, '') : html),
+      },
+    },
   ],
 })

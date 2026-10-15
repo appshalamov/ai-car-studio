@@ -1,22 +1,23 @@
-export type HistoryItem = {
+import type { Sel } from './build'
+
+export type Build = {
   id: string
-  tool: 'car' | 'bike' | 'editor' | 'background' | 'wrap'
-  title: string
-  before?: string
+  before: string
   after: string
-  prompt: string
+  label: string
+  sel: Sel
+  style: string | null
   createdAt: number
 }
 
-const DB = 'acs'
-const STORE = 'history'
+const DB = 'carstudio'
+const STORE = 'builds'
 
 function open(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB, 1)
     req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: 'id' }).createIndex('createdAt', 'createdAt')
+      if (!req.result.objectStoreNames.contains(STORE)) req.result.createObjectStore(STORE, { keyPath: 'id' })
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -34,20 +35,19 @@ async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBReq
 
 export const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36)
 
-export async function saveHistory(item: Omit<HistoryItem, 'id' | 'createdAt'>) {
-  const full: HistoryItem = { ...item, id: uid(), createdAt: Date.now() }
-  try { await tx('readwrite', (s) => s.put(full)) } catch (e) { console.warn('history save failed', e) }
+export async function saveBuild(b: Omit<Build, 'id' | 'createdAt'>): Promise<Build> {
+  const full: Build = { ...b, id: uid(), createdAt: Date.now() }
+  await tx('readwrite', (s) => s.put(full))
   return full
 }
 
-export async function listHistory(): Promise<HistoryItem[]> {
+export async function listBuilds(): Promise<Build[]> {
   try {
-    const all = await tx<HistoryItem[]>('readonly', (s) => s.getAll())
+    const all = await tx<Build[]>('readonly', (s) => s.getAll())
     return all.sort((a, b) => b.createdAt - a.createdAt)
   } catch {
     return []
   }
 }
 
-export const deleteHistory = (id: string) => tx('readwrite', (s) => s.delete(id))
-export const clearHistory = () => tx('readwrite', (s) => s.clear())
+export const deleteBuild = (id: string) => tx('readwrite', (s) => s.delete(id))

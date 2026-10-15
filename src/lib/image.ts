@@ -65,7 +65,7 @@ export async function shareDataUrl(dataUrl: string, filename: string, text: stri
   const file = new File([dataUrlToBlob(dataUrl)], filename, { type: dataUrlParts(dataUrl).mime })
   const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean }
   if (nav.share && nav.canShare?.({ files: [file] })) {
-    await nav.share({ files: [file], title: 'AI Car Studio', text })
+    await nav.share({ files: [file], title: 'Car Studio', text })
     return true
   }
   downloadDataUrl(dataUrl, filename)
