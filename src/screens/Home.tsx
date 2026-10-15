@@ -1,7 +1,10 @@
 import { useRef, useState } from 'react'
 import { LANGS, useT, type Lang } from '../lib/i18n'
 import { shopName, type Brand } from '../lib/api'
-import { STYLES, swatch } from '../lib/build'
+import { STYLES } from '../lib/build'
+
+/** The same Ferrari in each ready look (public/img). */
+const FERRARI: Record<string, string> = { rosso: 'track' }
 import { mods, type Car } from '../lib/cars'
 import { BeforeAfter } from '../components/BeforeAfter'
 import { BrandMark } from '../components/BrandMark'
@@ -53,16 +56,13 @@ export function Home({ brand, cars, freeLeft, onUpload, onStyle, onSettings }: P
         <p className="note"><ILock /><span>{t.freeNote(freeLeft)}</span></p>
       </div>
       <h2 className="h2 pad">{t.startT}</h2>
-      <div className="rail looks-rail">
-        {STYLES.map((s) => {
-          const c = swatch(s.set)
-          return (
-            <button key={s.id} onClick={() => onStyle(s.id)}>
-              <span className="look" style={{ '--p': c.paint ?? 'transparent', '--w': c.wheels ?? 'transparent' } as React.CSSProperties} data-stock={c.paint ? undefined : ''} aria-hidden />
-              <b>{s[lang][0]}</b><span>{s[lang][1]}</span>
-            </button>
-          )
-        })}
+      <div className="rail ferrari-rail">
+        {STYLES.map((s) => (
+          <button key={s.id} onClick={() => onStyle(s.id)}>
+            <img src={`./img/${FERRARI[s.id] ?? s.id}.jpg`} alt="" loading="lazy" />
+            <b>{s[lang][0]}</b><span>{s[lang][1]}</span>
+          </button>
+        ))}
       </div>
       <div className="pad">
         <h2 className="h2">{t.howT}</h2>

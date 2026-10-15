@@ -33,7 +33,7 @@ test('client: look → render starts at once → 3 contact steps while it runs �
   await expect(page.locator('.hero .ba').first()).toBeVisible()
 
   // The color looks are on the home screen and open tuning with the look chosen.
-  await page.locator('.looks-rail').getByRole('button', { name: /Blackout/ }).click()
+  await page.locator('.ferrari-rail').getByRole('button', { name: /Blackout/ }).click()
   await expect(page.locator('.dock')).toContainText('Blackout')
   await page.getByRole('button', { name: 'Render build' }).click()
 

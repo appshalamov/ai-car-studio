@@ -315,3 +315,8 @@ svg.i { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-widt
 .screen.contacting .rcard { padding: 12px 14px 10px; gap: 4px }
 .screen.contacting .rcard small { display: none }
 .screen.contacting .ring { width: 28px; height: 28px; margin: 0 }
+.ferrari-rail button { flex: 0 0 210px; scroll-snap-align: start; text-align: left; display: grid; gap: 2px }
+.ferrari-rail img { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 14px; display: block; background: var(--paper); margin-bottom: 6px }
+.ferrari-rail b { font-size: 14px; font-weight: 600 }
+.ferrari-rail span { font-size: 12px; color: var(--ink-2); line-height: 1.25 }
+.ferrari-rail button:active { transform: scale(.97) }
