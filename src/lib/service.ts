@@ -1,41 +1,39 @@
 import { notify, askNotifyPermission } from './notify'
-import { toDataUrl } from './woso'
+import { API, generate, getMe, register } from './api'
 
 /**
- * Hosted mode: generation goes through the studio's own woso account behind a proxy
- * (worker/woso-proxy.js). Free for the client; the app shows what each render costs the studio.
+ * Hosted mode: renders go through the studio's woso account behind worker/woso-proxy.js.
+ * Free for the client (N free renders after phone + email); the cost is visible only in the admin.
  */
-export const SERVICE_URL = ((import.meta.env.VITE_SERVICE_URL as string | undefined) ?? '').replace(/\/$/, '')
+export const SERVICE_URL = API
 
-export type ServicePrice = { model: string; credits: number | null; usd: number | null }
-
-let price: ServicePrice | null = null
 const listeners = new Set<() => void>()
-export const getServicePrice = () => price
-export function onServicePrice(fn: () => void) { listeners.add(fn); return () => { listeners.delete(fn) } }
-function setPrice(p: ServicePrice) { price = p; listeners.forEach((l) => l()) }
+export const onServiceChange = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn) } }
+export const freeLeft = () => getMe()?.left ?? null
 
-export async function loadServicePrice() {
-  const r = await fetch(`${SERVICE_URL}/price`)
-  if (r.ok) setPrice(await r.json())
+async function ensureRegistered() {
+  if (getMe()) return
+  const phone = prompt('Получите 3 бесплатные сборки.\nВаш телефон:')?.trim()
+  if (!phone) throw new Error('Для бесплатных сборок нужен телефон и email')
+  const email = prompt('Ваш email:')?.trim()
+  if (!email) throw new Error('Для бесплатных сборок нужен телефон и email')
+  await register({ phone, email })
+  listeners.forEach((l) => l())
 }
 
-export function fmtCharge(credits: number | null, usd: number | null) {
-  if (credits == null) return '—'
-  return `${credits.toFixed(2)} кр.${usd != null ? ` (≈ $${usd < 1 ? usd.toFixed(3) : usd.toFixed(2)})` : ''}`
-}
-
-export async function serviceGenerate(req: { images: string[]; prompt: string; signal?: AbortSignal }, ultra: boolean): Promise<string> {
+export async function serviceGenerate(req: { images: string[]; prompt: string; signal?: AbortSignal }): Promise<string> {
   askNotifyPermission().catch(() => {}) // still inside the tap that started the render
-  const r = await fetch(`${SERVICE_URL}/generate`, {
-    method: 'POST',
-    signal: req.signal,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: req.prompt, images: req.images, resolution: ultra ? '2K' : undefined }),
-  })
-  const j = await r.json().catch(() => ({}))
-  if (!r.ok || !j.image) throw new Error(j.error || `Сервис недоступен (${r.status})`)
-  setPrice({ model: j.model, credits: j.credits, usd: j.usd })
-  notify('Генерация готова', `Для вас бесплатно. Себестоимость: ${fmtCharge(j.credits, j.usd)}${j.left != null ? ` · осталось сегодня: ${j.left}` : ''}`)
-  return toDataUrl(j.image)
+  await ensureRegistered()
+  let r
+  try {
+    r = await generate(req)
+  } catch (e) {
+    const status = (e as { status?: number }).status
+    if (status === 401) { localStorage.removeItem('acs.me'); await ensureRegistered(); r = await generate(req) }
+    else if (status === 402) throw new Error('Бесплатные сборки закончились. Свяжитесь с нами, чтобы продолжить.')
+    else throw e
+  }
+  listeners.forEach((l) => l())
+  notify('Ваша машина готова', `Осталось бесплатных сборок: ${r.left}`)
+  return r.image
 }

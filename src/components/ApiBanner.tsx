@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLang } from '../lib/i18n'
 import { useSettings } from '../lib/useSettings'
-import { SERVICE_URL, fmtCharge, getServicePrice, loadServicePrice, onServicePrice } from '../lib/service'
+import { SERVICE_URL, freeLeft, onServiceChange } from '../lib/service'
 import { WOSO_PRICES, fmtCost, getCost, onCostChange, wosoQuote } from '../lib/woso'
 
 export function ApiBanner() {
@@ -49,16 +49,15 @@ function WosoCost() {
   )
 }
 
-/** Hosted mode: free for the client, shows what one photo costs the studio. */
+/** Hosted mode: free renders left for this client (the cost is shown only in the admin). */
 function ServiceCost() {
   const { t } = useLang()
   const [, tick] = useState(0)
-  useEffect(() => onServicePrice(() => tick((n) => n + 1)), [])
-  useEffect(() => { if (!getServicePrice()) loadServicePrice().catch(() => {}) }, [])
-  const p = getServicePrice()
+  useEffect(() => onServiceChange(() => tick((n) => n + 1)), [])
+  const left = freeLeft()
   return (
     <div className="banner">
-      <span>🎁 {t('Генерация для вас бесплатна', 'Rendering is free for you')} · {t('себестоимость фото', 'cost per photo')}: <b>{p ? fmtCharge(p.credits, p.usd) : '…'}</b></span>
+      <span>🎁 {left == null ? t('3 бесплатные сборки после регистрации по телефону и email', '3 free renders after signing up with phone and email') : `${t('Осталось бесплатных сборок', 'Free renders left')}: ${left}`}</span>
     </div>
   )
 }

@@ -14,7 +14,7 @@ export type EditRequest = {
 }
 
 export async function runAI(req: EditRequest, settings: Settings = loadSettings()): Promise<string> {
-  if (SERVICE_URL) return serviceGenerate(req, settings.quality === 'ultra')
+  if (SERVICE_URL) return serviceGenerate(req)
   switch (settings.provider) {
     case 'gemini':
       return gemini(req, settings)

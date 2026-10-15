@@ -26,7 +26,7 @@ jobs:
       - run: npm ci
       - run: npm run build
         env:
-          VITE_SERVICE_URL: ${{ vars.SERVICE_URL }}
+          VITE_SERVICE_URL: ${{ vars.SERVICE_URL || 'https://ai-car-studio-woso.appshalamov.workers.dev' }}
       - uses: actions/configure-pages@v5
         with:
           enablement: true
