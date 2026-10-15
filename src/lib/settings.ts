@@ -1,4 +1,4 @@
-export type Provider = 'demo' | 'gemini' | 'openai'
+export type Provider = 'demo' | 'gemini' | 'openai' | 'woso'
 
 export type Settings = {
   provider: Provider
@@ -7,6 +7,12 @@ export type Settings = {
   openaiKey: string
   openaiModel: string
   openaiBase: string
+  wosoToken: string
+  wosoModel: string
+  /** Show the price and ask before spending credits. */
+  wosoAsk: boolean
+  wosoNotify: boolean
+  wosoUsdPerCredit: number
   quality: 'standard' | 'ultra'
 }
 
@@ -17,6 +23,11 @@ export const DEFAULT_SETTINGS: Settings = {
   openaiKey: '',
   openaiModel: 'gpt-image-1',
   openaiBase: 'https://api.openai.com/v1',
+  wosoToken: '',
+  wosoModel: 'nano-banana',
+  wosoAsk: true,
+  wosoNotify: true,
+  wosoUsdPerCredit: 0.15, // 50 credits = $7.50
   quality: 'standard',
 }
 
@@ -44,5 +55,6 @@ export function onSettingsChange(fn: () => void) {
 export function isConfigured(s: Settings) {
   if (s.provider === 'gemini') return !!s.geminiKey.trim()
   if (s.provider === 'openai') return !!s.openaiKey.trim()
+  if (s.provider === 'woso') return !!s.wosoToken.trim()
   return true
 }

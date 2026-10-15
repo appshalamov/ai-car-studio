@@ -1,5 +1,6 @@
 import { dataUrlParts, dataUrlToBlob, loadImage } from './image'
 import { loadSettings, type Settings } from './settings'
+import { wosoGenerate } from './woso'
 
 export type DemoHint = { tint?: string; scene?: [string, string]; pattern?: boolean }
 
@@ -17,6 +18,8 @@ export async function runAI(req: EditRequest, settings: Settings = loadSettings(
       return gemini(req, settings)
     case 'openai':
       return openai(req, settings)
+    case 'woso':
+      return wosoGenerate(req, settings)
     default:
       return demo(req)
   }
