@@ -183,6 +183,12 @@ export const adminTestPush = () => req('/admin/push/test', { method: 'POST' }, A
 export type Shop = Brand & { id: string; createdAt?: number }
 export type ShopInput = { name: string; phone: string; free: number }
 export const adminAddRenders = (id: string, add: number) => req<{ free: number; left: number }>(`/admin/clients/${id}`, { method: 'PUT', body: JSON.stringify({ add }) }, A())
+export type HomeCar = { slug: string; model: string; mods_en: string; mods_ru: string; mods_es?: string; before: string; after: string }
+export const homeCars = () => req<HomeCar[]>('/home')
+export const adminClientBuilds = (id: string) => req<Build[]>(`/admin/clients/${id}/builds`, {}, A())
+export const adminHome = () => req<HomeCar[]>('/admin/home', {}, A())
+export const adminAddHome = (b: { before: string; after: string; model: string; mods: string }) => req<HomeCar[]>('/admin/home', { method: 'POST', body: JSON.stringify(b) }, A())
+export const adminRemoveHome = (slug: string) => req<HomeCar[]>(`/admin/home/${slug}`, { method: 'DELETE' }, A())
 export const adminShops = () => req<Shop[]>('/admin/shops', {}, A())
 export const adminCreateShop = (b: ShopInput & { logo?: string | null }) => req<Shop>('/admin/shops', { method: 'POST', body: JSON.stringify(b) }, A())
 export const adminUpdateShop = (id: string, b: ShopInput) => req<Shop>(id === 'main' ? '/admin/brand' : `/admin/shops/${id}`, { method: 'PUT', body: JSON.stringify(b) }, A())

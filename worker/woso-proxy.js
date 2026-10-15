@@ -46,6 +46,7 @@ export default {
 
     try {
       if (path === '/config' && request.method === 'GET') return json(await publicBrand(env, url.origin, url.searchParams.get('shop')))
+      if (path === '/home' && request.method === 'GET') return json(await getJ(env, 'home', []))
       if (path === '/start' && request.method === 'POST') return json(await startAnon(request, env))
       if (path === '/register' && request.method === 'POST') return json(await register(request, env))
       if (path === '/me' && request.method === 'GET') {
@@ -369,6 +370,27 @@ async function admin(request, env, route, origin) {
     } catch { /* woso unreachable: show the rest */ }
     const clients = await countPrefix(env, 'user:')
     return { balance, price, usdPerCredit: rate, clients, generations: stats.generations, spentCredits: stats.spentCredits, spentUsd: +(stats.spentCredits * rate).toFixed(2) }
+  }
+  const bm = /^clients\/([a-f0-9]{16,64})\/builds$/.exec(route)
+  if (bm && m === 'GET') {
+    const user = await getJ(env, `user:${bm[1]}`, null)
+    return (user?.builds || []).map((b) => publicBuild(b, origin))
+  }
+  // Builds the owner picked for the app's home screen (shown first in the before/after carousel).
+  if (route === 'home' && m === 'GET') return getJ(env, 'home', [])
+  if (route === 'home' && m === 'POST') {
+    const { before, after, model, mods } = await request.json()
+    if (!/^https:\/\//.test(before || '') || !/^https:\/\//.test(after || '')) throw fail('before and after links required', 400)
+    const item = { slug: crypto.randomUUID().slice(0, 8), model: String(model || '').slice(0, 60), mods_en: String(mods || '').slice(0, 120), mods_ru: String(mods || '').slice(0, 120), mods_es: String(mods || '').slice(0, 120), before, after }
+    const list = [item, ...(await getJ(env, 'home', []))].slice(0, 8)
+    await putJ(env, 'home', list)
+    return list
+  }
+  const hm = /^home\/([\w-]{1,40})$/.exec(route)
+  if (hm && m === 'DELETE') {
+    const list = (await getJ(env, 'home', [])).filter((x) => x.slug !== hm[1])
+    await putJ(env, 'home', list)
+    return list
   }
   const cm = /^clients\/([a-f0-9]{16,64})$/.exec(route)
   if (cm && m === 'PUT') {

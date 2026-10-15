@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { homeCars } from './api'
 
 /** Real before/after pairs for the home screen, sample car and gallery examples (public/img/cars/cars.json). */
 export type Car = { slug: string; model: string; mods_en: string; mods_ru: string; mods_es?: string; before: string; after: string }
@@ -11,11 +12,16 @@ const FALLBACK: Car[] = [
 
 let cache: Promise<Car[]> | null = null
 export function loadCars(): Promise<Car[]> {
-  cache ??= fetch('./img/cars/cars.json')
-    .then((r) => (r.ok ? r.json() : []))
-    .then((list: Omit<Car, 'before' | 'after'>[]) => (list.length ? list.map((c) => ({ ...c, before: `./img/cars/${c.slug}-before.jpg`, after: `./img/cars/${c.slug}-after.jpg` })) : FALLBACK))
-    .catch(() => FALLBACK)
+  // Builds the owner put on the home screen in the admin come first.
+  cache ??= Promise.all([homeCars().catch(() => [] as Car[]), loadStatic()]).then(([home, rest]) => (home.length ? [...home, ...rest.filter((c) => c.slug !== 'demo')] : rest))
   return cache
+}
+
+function loadStatic(): Promise<Car[]> {
+  return fetch('./img/cars/cars.json')
+    .then((r) => (r.ok ? r.json() : []))
+    .then((list: (Omit<Car, 'before' | 'after'> & Partial<Car>)[]) => (list.length ? list.map((c) => ({ ...c, before: c.before || `./img/cars/${c.slug}-before.jpg`, after: c.after || `./img/cars/${c.slug}-after.jpg` })) : FALLBACK))
+    .catch(() => FALLBACK)
 }
 
 export function useCars() {

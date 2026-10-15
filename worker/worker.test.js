@@ -288,3 +288,20 @@ describe('admin gives more renders', () => {
     expect((await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img] } })).status).toBe(200)
   })
 })
+
+describe('owner picks builds for the home screen', () => {
+  it('lists a client\'s builds for the admin and puts one on the public home carousel', async () => {
+    const { token } = (await register()).body
+    await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img], label: 'Blackout' } })
+    const builds = (await call(`/admin/clients/${token}/builds`, { admin: 'pw' })).body
+    expect(builds).toHaveLength(1)
+    expect((await call('/home')).body).toEqual([])
+    await call('/admin/home', { method: 'POST', admin: 'pw', body: { before: builds[0].before, after: builds[0].after, model: 'Mercedes', mods: 'Blackout' } })
+    const home = (await call('/home')).body
+    expect(home).toHaveLength(1)
+    expect(home[0]).toMatchObject({ model: 'Mercedes', before: builds[0].before, after: builds[0].after })
+    expect(JSON.stringify(home)).not.toMatch(/Mike|example\.com|555/) // no client data on the public list
+    await call(`/admin/home/${home[0].slug}`, { method: 'DELETE', admin: 'pw' })
+    expect((await call('/home')).body).toEqual([])
+  })
+})

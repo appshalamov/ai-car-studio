@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
-import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminAddRenders, adminShops, adminSubscribe, adminSummary, adminTestPush, b64uToBytes, shopName, type ApiError, type Brand, type Client, type GenLog, type Shop, type Summary } from '../lib/api'
+import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminAddRenders, adminHome, adminShops, adminSubscribe, adminSummary, adminTestPush, b64uToBytes, shopName, type ApiError, type Brand, type Client, type GenLog, type Shop, type Summary } from '../lib/api'
 import { loadImage } from '../lib/image'
 import { BrandMark } from '../components/BrandMark'
 import { Shops } from './Shops'
+import { ClientBuilds, HomeCard, useHome } from './HomePicks'
 
 type Data = { summary: Summary; clients: Client[]; renders: GenLog[]; shops: Shop[]; brand: Brand }
 
@@ -57,6 +58,8 @@ async function squareLogo(file: File): Promise<string> {
 
 const focusFromHash = () => /client=([\w]+)/.exec(location.hash)?.[1] ?? null
 
+const onFailRef = (e: ApiError) => console.warn(e)
+
 export default function Admin() {
   const [lang, setLang] = useState<'en' | 'ru'>(() => (ls.get('cs-admin-lang') as 'en' | 'ru') || (navigator.language.startsWith('ru') ? 'ru' : 'en'))
   const t = L[lang]
@@ -66,6 +69,7 @@ export default function Admin() {
   const [error, setError] = useState<string | null>(null)
   const [pushMsg, setPushMsg] = useState<string | null>(null)
   const [focus, setFocus] = useState<string | null>(focusFromHash)
+  const [home, setHome] = useHome(onFailRef)
 
   const onFail = useCallback((e: ApiError) => {
     if (e.status === 401) { adminLogout(); setAuthed(false); setError(t.wrong) }
@@ -77,11 +81,12 @@ export default function Admin() {
     try {
       const [summary, clients, renders, shops] = await Promise.all([adminSummary(), adminClients(), adminGenerations(), adminShops()])
       setData({ summary, clients, renders, shops, brand: shops.find((x) => x.id === 'main') ?? shops[0] })
+      adminHome().then(setHome).catch(() => {})
       setError(null)
     } catch (e) {
       onFail(e as ApiError)
     }
-  }, [onFail])
+  }, [onFail, setHome])
 
   useEffect(() => {
     if (!authed) return
@@ -162,6 +167,8 @@ export default function Admin() {
             <div className="tile"><span>{t.balance}</span><b>{s.balance != null ? s.balance.toFixed(2) : '—'}</b><small>{s.price != null ? t.perRender(cr(s.price), usd(s.price * s.usdPerCredit)) : ''}</small></div>
           </section>
 
+          <HomeCard lang={lang} items={home} onChange={setHome} onFail={onFail} />
+
           <Shops lang={lang} shops={data.shops} clients={data.clients} squareLogo={squareLogo} onChanged={load} onFail={onFail} />
 
           <div className="cols">
@@ -192,6 +199,7 @@ export default function Admin() {
                     <span>{t.usedL(c.used, c.left)}</span>
                     <button className="lnk" onClick={async () => { try { await adminAddRenders(c.id, 10); load() } catch (e) { onFail(e as ApiError) } }}>{t.add10}</button>
                   </div>
+                  <ClientBuilds lang={lang} id={c.id} home={home} onHome={setHome} onFail={onFail} />
                 </li>
               ))}
             </ul>

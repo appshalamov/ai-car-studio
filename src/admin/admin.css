@@ -94,3 +94,10 @@ h2 { font-size: 19px; letter-spacing: -.02em; margin: 0 0 4px; display: flex; ga
 .ph-foot span { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
 .ph-foot i { font-style: normal; background: #f2c230; border-radius: 8px; padding: 3px 8px }
 @media (max-width: 720px) { .editor { grid-template-columns: minmax(0, 1fr) } .phone-prev { max-width: 260px; justify-self: center; width: 100% } }
+.picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 10px }
+.picks figure { margin: 0; display: grid; gap: 6px; background: var(--studio); border-radius: 14px; padding: 8px }
+.picks img { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 10px; display: block }
+.picks figcaption { display: grid; font-size: 13px }
+.picks figcaption span { color: var(--ink-2) }
+.picks .btn.y { margin: 0; height: 40px }
+.cbuilds { grid-column: 1 / -1 }
