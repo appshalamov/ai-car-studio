@@ -277,3 +277,14 @@ describe('render first, contacts while it runs', () => {
     expect((await call('/admin/clients', { admin: 'pw' })).body).toHaveLength(1)
   })
 })
+
+describe('admin gives more renders', () => {
+  it('adds free renders to a client who ran out', async () => {
+    const { token } = (await register()).body
+    for (let i = 0; i < 3; i++) await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img] } })
+    expect((await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img] } })).status).toBe(402)
+    expect((await call(`/admin/clients/${token}`, { method: 'PUT', body: { add: 10 } })).status).toBe(401)
+    expect((await call(`/admin/clients/${token}`, { method: 'PUT', admin: 'pw', body: { add: 10 } })).body).toMatchObject({ free: 13, left: 10 })
+    expect((await call('/generate', { method: 'POST', user: token, body: { prompt: 'x', images: [img] } })).status).toBe(200)
+  })
+})

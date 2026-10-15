@@ -159,7 +159,7 @@ export async function subscribeMe(brand: Brand, lang: string): Promise<boolean> 
 
 // ---------- admin ----------
 
-export type Client = { id: string; name?: string; phone: string; email: string; createdAt: number; used: number; left: number; shop?: string; shopName?: string }
+export type Client = { id: string; anon?: boolean; name?: string; phone: string; email: string; createdAt: number; used: number; left: number; shop?: string; shopName?: string }
 export type GenLog = { at: number; userId: string; name?: string; phone?: string; email?: string; shop?: string; shopName?: string; label?: string; model: string; credits: number | null; usd: number | null; ok: boolean; error?: string }
 export type Summary = { balance: number | null; price: number | null; usdPerCredit: number; clients: number; generations: number; spentCredits: number; spentUsd: number }
 
@@ -182,6 +182,7 @@ export const adminTestPush = () => req('/admin/push/test', { method: 'POST' }, A
 
 export type Shop = Brand & { id: string; createdAt?: number }
 export type ShopInput = { name: string; phone: string; free: number }
+export const adminAddRenders = (id: string, add: number) => req<{ free: number; left: number }>(`/admin/clients/${id}`, { method: 'PUT', body: JSON.stringify({ add }) }, A())
 export const adminShops = () => req<Shop[]>('/admin/shops', {}, A())
 export const adminCreateShop = (b: ShopInput & { logo?: string | null }) => req<Shop>('/admin/shops', { method: 'POST', body: JSON.stringify(b) }, A())
 export const adminUpdateShop = (id: string, b: ShopInput) => req<Shop>(id === 'main' ? '/admin/brand' : `/admin/shops/${id}`, { method: 'PUT', body: JSON.stringify(b) }, A())

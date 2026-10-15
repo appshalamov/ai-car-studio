@@ -370,6 +370,17 @@ async function admin(request, env, route, origin) {
     const clients = await countPrefix(env, 'user:')
     return { balance, price, usdPerCredit: rate, clients, generations: stats.generations, spentCredits: stats.spentCredits, spentUsd: +(stats.spentCredits * rate).toFixed(2) }
   }
+  const cm = /^clients\/([a-f0-9]{16,64})$/.exec(route)
+  if (cm && m === 'PUT') {
+    // Give a client more free renders (or the owner's own account a big number for testing).
+    const user = await getJ(env, `user:${cm[1]}`, null)
+    if (!user) throw fail('not found', 404)
+    const { free, add } = await request.json()
+    if (add != null) user.free = Math.max(0, Math.min(100000, (user.free ?? 3) + (parseInt(add, 10) || 0)))
+    else user.free = Math.max(0, Math.min(100000, parseInt(free, 10) || 0))
+    await saveUser(env, user)
+    return { id: user.id, free: user.free, used: user.used, left: left(env, user) }
+  }
   if (route === 'clients' && m === 'GET') {
     const keys = await listPrefix(env, 'user:', 1000)
     return keys.map((k) => ({ id: k.name.slice(5), ...k.metadata, left: Math.max(0, (k.metadata?.free ?? 3) - (k.metadata?.used ?? 0)) })).sort((a, b) => b.createdAt - a.createdAt)

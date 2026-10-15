@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminShops, adminSubscribe, adminSummary, adminTestPush, b64uToBytes, shopName, type ApiError, type Brand, type Client, type GenLog, type Shop, type Summary } from '../lib/api'
+import { API, adminClients, adminGenerations, adminLogin, adminLogout, adminPass, adminAddRenders, adminShops, adminSubscribe, adminSummary, adminTestPush, b64uToBytes, shopName, type ApiError, type Brand, type Client, type GenLog, type Shop, type Summary } from '../lib/api'
 import { loadImage } from '../lib/image'
 import { BrandMark } from '../components/BrandMark'
 import { Shops } from './Shops'
@@ -16,7 +16,7 @@ const L = {
     pushT: 'Notifications', pushOn: 'Turn on notifications', pushP: 'Get a push for every new client and every render, with its cost.',
     pushIos: 'On iPhone: Share → Add to Home Screen, open the admin from the home screen, then turn notifications on.',
     pushNoKeys: 'Push keys are not set on the server yet.', testSent: (n: number) => (n ? `Test sent to ${n} device${n === 1 ? '' : 's'}` : 'Subscribed, but the test did not arrive'), denied: 'Notifications are blocked in this browser settings.',
-    clientsT: 'Clients', none: 'No clients yet. Share the app link and they will show up here.', joined: 'Joined', usedL: (u: number, l: number) => `${u} used · ${l} left`,
+    clientsT: 'Clients', none: 'No clients yet. Share the app link and they will show up here.', joined: 'Joined', add10: '+10 renders', noContacts: 'No contacts yet', usedL: (u: number, l: number) => `${u} used · ${l} left`,
     rendersT: 'Recent renders', noRenders: 'No renders yet.', custom: 'Custom build', failed: 'Failed, not charged', lang: 'Русский', refresh: 'Refresh', err: 'Could not reach the service', notConf: 'The service URL is not configured in this build.', signOut: 'Sign out',
   },
   ru: {
@@ -28,7 +28,7 @@ const L = {
     pushT: 'Уведомления', pushOn: 'Включить уведомления', pushP: 'Пуш о каждом новом клиенте и каждой генерации с её себестоимостью.',
     pushIos: 'На iPhone: «Поделиться» → «На экран Домой», откройте админку с экрана Домой и включите уведомления.',
     pushNoKeys: 'На сервере ещё не заданы ключи для пушей.', testSent: (n: number) => (n ? `Проверочный пуш отправлен: ${n}` : 'Подписка есть, но проверочный пуш не дошёл'), denied: 'Уведомления запрещены в настройках браузера.',
-    clientsT: 'Клиенты', none: 'Клиентов пока нет. Отправьте ссылку на приложение, и они появятся здесь.', joined: 'Регистрация', usedL: (u: number, l: number) => `сделано ${u} · осталось ${l}`,
+    clientsT: 'Клиенты', none: 'Клиентов пока нет. Отправьте ссылку на приложение, и они появятся здесь.', joined: 'Регистрация', add10: '+10 генераций', noContacts: 'Ещё не оставил контакты', usedL: (u: number, l: number) => `сделано ${u} · осталось ${l}`,
     rendersT: 'Последние генерации', noRenders: 'Генераций пока нет.', custom: 'Своя сборка', failed: 'Ошибка, не списано', lang: 'English', refresh: 'Обновить', err: 'Сервис недоступен', notConf: 'В этой сборке не указан адрес сервиса.', signOut: 'Выйти',
   },
 }
@@ -182,7 +182,7 @@ export default function Admin() {
               {data.clients.map((c) => (
                 <li key={c.id} id={'c-' + c.id} className={focus === c.id ? 'hl' : ''}>
                   <div className="main">
-                    <b>{c.name || '—'}</b>
+                    <b>{c.name || (c.anon ? t.noContacts : '—')}</b>
                     {c.shop && c.shop !== 'main' && <span className="chip">{c.shopName || c.shop}</span>}
                     <a href={`tel:${c.phone}`}>{fmtPhone(c.phone)}</a>
                     <a href={`mailto:${c.email}`}>{c.email}</a>
@@ -190,6 +190,7 @@ export default function Admin() {
                   <div className="meta">
                     <span>{t.joined} {fmtTime(c.createdAt)}</span>
                     <span>{t.usedL(c.used, c.left)}</span>
+                    <button className="lnk" onClick={async () => { try { await adminAddRenders(c.id, 10); load() } catch (e) { onFail(e as ApiError) } }}>{t.add10}</button>
                   </div>
                 </li>
               ))}
